@@ -1,0 +1,12 @@
+feature,true_log_multiplier,recovered_log_multiplier,abs_error,pvalue
+ph_mid_break,0.8473,0.1722,0.6751,0.001
+ph_summer_sem,0.6931,-0.0706,0.7638,0.337
+ph_pre_semester,0.5108,-0.2905,0.8014,0.0
+ph_endsem_exam,1.9554,1.3851,0.5703,0.0
+ph_midsem_exam,1.9554,1.3488,0.6066,0.0
+ph_normal_classes,1.8971,1.4025,0.4946,0.0
+has_dessert,0.0583,0.1154,0.0571,0.0627
+is_fast_food_item,0.0488,0.113,0.0642,0.0001
+is_special_item,0.0392,0.1181,0.0789,0.0
+has_nonveg_option,0.0677,-0.0177,0.0854,0.6697
+is_rainy,-0.1985,-0.0053,0.1932,0.8351

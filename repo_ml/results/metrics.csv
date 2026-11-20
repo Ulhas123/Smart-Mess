@@ -1,0 +1,8 @@
+model,n,MAE,RMSE,MAPE,WAPE,Pinball_q10,Pinball_q50,Pinball_q90,PICP_90,PINAW_90
+Seasonal-Naive,612,68.2,85.77,65.57,42.61,,,,,
+Holt-Winters(BH2-dinner),102,69.56,83.47,58.16,33.58,,,,,
+SARIMA(BH2-dinner),102,72.88,86.01,58.93,35.18,,,,,
+LightGBM-all,612,41.54,53.23,32.14,25.95,8.341,20.738,10.045,0.724,0.414
+LightGBM-no-calendar,612,47.28,60.89,38.09,29.54,,,,,
+LightGBM-no-weather,612,41.67,53.33,32.08,26.03,,,,,
+LightGBM-asym(q75),612,48.54,61.49,44.32,30.33,,,,,

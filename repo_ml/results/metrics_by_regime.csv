@@ -1,0 +1,7 @@
+model,n,MAE,RMSE,MAPE,WAPE,Pinball_q10,Pinball_q50,Pinball_q90,PICP_90,PINAW_90,regime
+LightGBM-all|end_break,18,6.72,9.02,29.27,26.3,1.239,3.516,1.957,0.722,0.691,end_break
+LightGBM-all|pre_semester,18,12.72,17.65,31.32,30.29,1.873,5.911,4.717,0.889,0.455,pre_semester
+LightGBM-all|normal_classes,330,45.38,56.69,30.91,25.76,9.137,22.603,10.929,0.724,0.515,normal_classes
+LightGBM-all|no_classes,162,40.23,50.53,29.04,24.13,8.325,20.183,8.771,0.772,0.443,no_classes
+LightGBM-all|midsem_exam,42,57.64,68.63,38.46,28.24,11.837,28.187,13.263,0.5,0.506,midsem_exam
+LightGBM-all|mid_break,42,27.67,36.16,49.0,38.5,4.47,14.509,10.548,0.69,0.458,mid_break

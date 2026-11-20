@@ -1,0 +1,16 @@
+category,condition,metric,value,meaning
+Tolerance Window,Within ±15 heads,Accuracy (%),25.82,Forecast within ±15 portions of actual dining
+Tolerance Window,Within ±25 heads,Accuracy (%),38.56,Forecast within ±25 portions of actual dining
+Tolerance Window,Within ±35 heads,Accuracy (%),50.33,Forecast within ±35 portions of actual dining
+Tolerance Window,Within ±50 heads,Accuracy (%),66.99,Forecast within ±50 portions of actual dining
+Tolerance Window,Within ±15% error,Accuracy (%),29.08,Forecast within ±15% relative error
+Tolerance Window,Within ±20% error,Accuracy (%),41.99,Forecast within ±20% relative error
+Tolerance Window,Within ±25% error,Accuracy (%),56.05,Forecast within ±25% relative error
+Decision: Surge (>=70%),Attendance >= 210,Accuracy (%),76.31,Correct classification of surge meals
+Decision: Surge (>=70%),Attendance >= 210,Precision (%),60.76,Reliability when predicting a meal surge
+Decision: Surge (>=70%),Attendance >= 210,Recall (%),53.63,Proportion of actual surges caught
+Decision: Surge (>=70%),Attendance >= 210,F1-Score (%),56.97,Harmonic balance of precision and recall
+Decision: Dip (<=30%),Attendance <= 90,Accuracy (%),88.07,Correct classification of vacation dips
+Decision: Dip (<=30%),Attendance <= 90,Precision (%),84.07,Reliability when predicting empty halls
+Decision: Dip (<=30%),Attendance <= 90,Recall (%),63.33,Proportion of actual vacation drops caught
+Decision: Dip (<=30%),Attendance <= 90,F1-Score (%),72.24,Harmonic balance of precision and recall

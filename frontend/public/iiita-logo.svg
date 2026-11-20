@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="100%" height="100%">
+  <defs>
+    <linearGradient id="iiitaGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#07294D" />
+      <stop offset="50%" stop-color="#0a3f78" />
+      <stop offset="100%" stop-color="#07294D" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#dfa74f" />
+      <stop offset="100%" stop-color="#f5cc7f" />
+    </linearGradient>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Outer Ring with IIITA Navy -->
+  <circle cx="120" cy="120" r="112" fill="url(#iiitaGrad)" stroke="#dfa74f" stroke-width="4" filter="url(#shadow)" />
+  
+  <!-- Inner Decorative Ring -->
+  <circle cx="120" cy="120" r="98" fill="none" stroke="#dfa74f" stroke-width="1.5" stroke-dasharray="3,3" />
+  <circle cx="120" cy="120" r="88" fill="#ffffff" />
+
+  <!-- Center Shield / Sacred Sangam Waves & Knowledge Flame -->
+  <!-- Inner Background Circle -->
+  <circle cx="120" cy="120" r="84" fill="#07294D" />
+
+  <!-- Radiating Knowledge Sun Rays -->
+  <g stroke="#dfa74f" stroke-width="2" opacity="0.6">
+    <line x1="120" y1="52" x2="120" y2="44" />
+    <line x1="120" y1="188" x2="120" y2="196" />
+    <line x1="52" y1="120" x2="44" y2="120" />
+    <line x1="188" y1="120" x2="196" y2="120" />
+    <line x1="72" y1="72" x2="66" y2="66" />
+    <line x1="168" y1="168" x2="174" y2="174" />
+    <line x1="72" y1="168" x2="66" y2="174" />
+    <line x1="168" y1="72" x2="174" y2="66" />
+  </g>
+
+  <!-- Sangam Confluence Waves (Ganga, Yamuna, Saraswati) -->
+  <path d="M 60,135 Q 90,115 120,135 T 180,135" fill="none" stroke="#38BDF8" stroke-width="3" stroke-linecap="round" />
+  <path d="M 60,147 Q 90,127 120,147 T 180,147" fill="none" stroke="#10B981" stroke-width="3" stroke-linecap="round" />
+  <path d="M 60,159 Q 90,139 120,159 T 180,159" fill="none" stroke="#dfa74f" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Central Flame of Knowledge (Torch) -->
+  <path d="M 120,70 C 110,88 108,102 120,118 C 132,102 130,88 120,70 Z" fill="url(#goldGrad)" filter="url(#shadow)" />
+  <path d="M 120,80 C 114,92 113,100 120,112 C 127,100 126,92 120,80 Z" fill="#ffffff" opacity="0.9" />
+
+  <!-- IIITA Letters -->
+  <text x="120" y="106" font-family="'Inter', sans-serif" font-weight="900" font-size="20" fill="#ffffff" text-anchor="middle" letter-spacing="2">IIITA</text>
+
+  <!-- Bottom Banner Motto: प्रज्ञानम् ब्रह्म -->
+  <path d="M 70,174 Q 120,192 170,174" fill="none" stroke="#dfa74f" stroke-width="1.5" />
+  <text x="120" y="186" font-family="'Inter', sans-serif" font-weight="700" font-size="10.5" fill="#dfa74f" text-anchor="middle" letter-spacing="1.5">प्रज्ञानम् ब्रह्म</text>
+</svg>

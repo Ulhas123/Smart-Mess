@@ -1,0 +1,394 @@
+import os
+import sys
+import math
+import json
+import csv
+from pathlib import Path
+from datetime import datetime
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+REPO_ML_DIR = BASE_DIR / "repo_ml"
+DATA_DIR = REPO_ML_DIR / "data"
+RESULTS_DIR = REPO_ML_DIR / "results"
+CONFIG_DIR = REPO_ML_DIR / "config"
+
+# In-memory telemetry storage for mock student card swipes and feedback
+telemetry_state = {
+    "live_scans": [
+        {"id": 1, "roll": "IEC2023059", "name": "Tushar Garg", "hostel": "BH-3", "slot": "dinner", "timestamp": "19:32:10"},
+        {"id": 2, "roll": "IEC2023037", "name": "Varun Karankar", "hostel": "BH-2", "slot": "dinner", "timestamp": "19:34:45"},
+        {"id": 3, "roll": "IEC2023058", "name": "Aadarsh Singh", "hostel": "BH-3", "slot": "dinner", "timestamp": "19:36:20"},
+        {"id": 4, "roll": "IEC2023012", "name": "Rohan Sharma", "hostel": "BH-2", "slot": "dinner", "timestamp": "19:38:05"},
+        {"id": 5, "roll": "IEC2023088", "name": "Priya Verma", "hostel": "BH-2", "slot": "dinner", "timestamp": "19:40:15"},
+    ],
+    "feedback": [
+        {"id": 1, "roll": "IEC2023059", "rating": 5, "comment": "Special Paneer Butter Masala was excellent tonight!", "meal": "Dinner", "date": "Today"},
+        {"id": 2, "roll": "IEC2023037", "rating": 4, "comment": "Crisp dosas for breakfast, zero waiting time.", "meal": "Breakfast", "date": "Today"},
+        {"id": 3, "roll": "IEC2023021", "rating": 5, "comment": "Great to see no food shortage during exam week.", "meal": "Lunch", "date": "Yesterday"},
+    ]
+}
+
+def load_csv_data(filepath):
+    if not os.path.exists(filepath):
+        return []
+    with open(filepath, mode="r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+# --- Core Mathematical Simulator Functions ---
+def compute_headcount(data: dict) -> dict:
+    capacity = 300.0
+    slot = str(data.get("slot", "dinner")).lower()
+    base_rates = {"breakfast": 0.42, "lunch": 0.67, "dinner": 0.76}
+    base_rate = base_rates.get(slot, 0.67)
+
+    academic_phase = data.get("academic_phase", "Normal")
+    regime_mults = {
+        "Normal": 1.0,
+        "Mid-Sem Exam": 1.06,
+        "End-Sem Exam": 1.07,
+        "Mid-Break": 0.35,
+        "End-Break": 0.15,
+        "Summer": 0.30,
+        "Pre-Semester": 0.25,
+        "Holiday": 0.82,
+    }
+    m_regime = regime_mults.get(academic_phase, 1.0)
+
+    # Weather Multiplier
+    m_weather = 1.0
+    is_rainy = bool(data.get("is_rainy", False))
+    temp_max = float(data.get("temp_max", 32.0))
+    temp_min = float(data.get("temp_min", 22.0))
+    if is_rainy:
+        if slot == "breakfast":
+            m_weather *= 0.82
+        elif slot == "lunch":
+            m_weather *= 0.96
+    if temp_max >= 40.0:
+        m_weather *= 0.97
+    if temp_min <= 10.0:
+        m_weather *= 0.98
+
+    # Menu Multiplier
+    m_menu = 1.0
+    if data.get("has_dessert", False):
+        m_menu += 0.06
+    if data.get("is_fast_food", False):
+        m_menu += 0.05
+    if data.get("is_special", False):
+        m_menu += 0.04
+    if data.get("hostel", "BH-2") == "BH-3" and data.get("has_nonveg", False):
+        m_menu += 0.07
+
+    # Festival Decay Multiplier (Hawkes exponential decay)
+    festival_factor = float(data.get("festival_factor", 0.0))
+    m_festival = 1.0 - (0.75 * min(1.0, max(0.0, festival_factor)))
+
+    # Anticipatory Exam Effect
+    days_to_exam = int(data.get("days_to_exam", 30))
+    m_anticipatory = 1.0
+    if 0 < days_to_exam <= 3:
+        m_anticipatory = 1.02
+
+    # Expected headcount mu
+    mu = capacity * base_rate * m_regime * m_weather * m_menu * m_festival * m_anticipatory
+    mu = max(15.0, min(float(capacity), mu))
+
+    # Heteroscedastic dispersion alpha
+    alpha = 0.08
+    if academic_phase in ["Mid-Sem Exam", "End-Sem Exam"]:
+        alpha = 0.05
+    elif academic_phase in ["Mid-Break", "End-Break", "Summer"]:
+        alpha = 0.18
+    if festival_factor > 0.2:
+        alpha += 0.10
+
+    var = mu + alpha * (mu ** 2)
+    std_dev = math.sqrt(var)
+
+    q10 = max(10, int(round(mu - 1.28155 * std_dev)))
+    q50 = int(round(mu))
+    q90 = min(int(capacity), int(round(mu + 1.28155 * std_dev)))
+    q75 = min(int(capacity), int(round(mu + 0.67449 * std_dev)))
+    safety_stock = max(5, q75 - q50)
+
+    # Batch Cooking Recommendation
+    initial_cook_batch = q10 + int(0.65 * (q50 - q10))
+    buffer_tray_batch = q90 - initial_cook_batch
+
+    return {
+        "expected_headcount": q50,
+        "q10": q10,
+        "q50": q50,
+        "q75": q75,
+        "q90": q90,
+        "std_dev": round(std_dev, 2),
+        "dispersion_alpha": round(alpha, 3),
+        "capacity": int(capacity),
+        "utilization_pct": round((q50 / capacity) * 100, 1),
+        "safety_stock_heads": safety_stock,
+        "cooking_strategy": {
+            "initial_cook_batch": initial_cook_batch,
+            "buffer_tray_batch": buffer_tray_batch,
+            "cooking_advice": f"Cook {initial_cook_batch} portions for main service; keep {buffer_tray_batch} portions staged in reserve."
+        },
+        "tolerance_windows": {
+            "window_25": [max(10, q50 - 25), min(int(capacity), q50 + 25)],
+            "window_35": [max(10, q50 - 35), min(int(capacity), q50 + 35)],
+            "window_50": [max(10, q50 - 50), min(int(capacity), q50 + 50)]
+        },
+        "multiplier_breakdown": {
+            "base_rate": base_rate,
+            "regime_factor": round(m_regime, 3),
+            "weather_factor": round(m_weather, 3),
+            "menu_factor": round(m_menu, 3),
+            "festival_factor": round(m_festival, 3),
+            "anticipatory_factor": round(m_anticipatory, 3)
+        }
+    }
+
+
+def compute_procurement(data: dict) -> dict:
+    heads = int(data.get("headcount", 200))
+    hostel = data.get("hostel", "BH-2")
+    is_bh3 = (hostel == "BH-3")
+    slot = str(data.get("slot", "dinner")).lower()
+
+    if slot == "breakfast":
+        rice_kg = round(heads * 0.04, 2)
+        atta_kg = round(heads * 0.08, 2)
+        dal_kg = round(heads * 0.02, 2)
+        veg_kg = round(heads * 0.07, 2)
+        dairy_kg = round(heads * 0.15, 2)
+        oil_l = round(heads * 0.015, 2)
+        spices_kg = round(heads * 0.01, 2)
+        nonveg_kg = round(heads * 0.08, 2) if is_bh3 else 0.0
+    else:
+        rice_kg = round(heads * 0.12, 2)
+        atta_kg = round(heads * 0.11, 2)
+        dal_kg = round(heads * 0.05, 2)
+        veg_kg = round(heads * 0.16, 2)
+        dairy_kg = round(heads * 0.08, 2)
+        oil_l = round(heads * 0.025, 2)
+        spices_kg = round(heads * 0.02, 2)
+        nonveg_kg = round(heads * 0.14, 2) if is_bh3 else 0.0
+
+    total_cost = (
+        rice_kg * 45 +
+        atta_kg * 35 +
+        dal_kg * 120 +
+        veg_kg * 35 +
+        dairy_kg * (280 if not is_bh3 else 180) +
+        oil_l * 130 +
+        spices_kg * 200 +
+        nonveg_kg * 190
+    )
+
+    items = [
+        {"name": "Rice (Basmati / Medium Grain)", "amount": f"{rice_kg} kg", "unit_price": "₹45/kg", "cost": round(rice_kg * 45)},
+        {"name": "Whole Wheat Atta", "amount": f"{atta_kg} kg", "unit_price": "₹35/kg", "cost": round(atta_kg * 35)},
+        {"name": "Dal & Pulses (Arhar/Rajma/Chana)", "amount": f"{dal_kg} kg", "unit_price": "₹120/kg", "cost": round(dal_kg * 120)},
+        {"name": "Fresh Vegetables (Potato, Onion, Tomato, Seasonal)", "amount": f"{veg_kg} kg", "unit_price": "₹35/kg", "cost": round(veg_kg * 35)},
+        {"name": "Dairy / Paneer / Curd", "amount": f"{dairy_kg} kg", "unit_price": "₹300/kg", "cost": round(dairy_kg * 300)},
+        {"name": "Refined Mustard / Sunflower Oil", "amount": f"{oil_l} L", "unit_price": "₹130/L", "cost": round(oil_l * 130)},
+        {"name": "Whole Spices, Salt & Condiments", "amount": f"{spices_kg} kg", "unit_price": "₹200/kg", "cost": round(spices_kg * 200)},
+    ]
+    if is_bh3 and nonveg_kg > 0:
+        items.append({"name": "Fresh Poultry / Eggs (BH-3 Non-Veg)", "amount": f"{nonveg_kg} kg", "unit_price": "₹190/kg", "cost": round(nonveg_kg * 190)})
+
+    return {
+        "headcount": heads,
+        "hostel": hostel,
+        "slot": slot,
+        "total_estimated_cost_inr": round(total_cost),
+        "cost_per_student_inr": round(total_cost / max(1, heads), 2),
+        "procurement_list": items,
+        "kitchen_prep_batches": [
+            {"batch": "Batch 1 (Immediate)", "portions": int(heads * 0.70), "description": "Cooked 45 min prior to meal opening."},
+            {"batch": "Batch 2 (Buffer Prep)", "portions": int(heads * 0.30), "description": "Vegetables prepped, dough ready for fast replenishment."}
+        ]
+    }
+
+
+class APIServerHandler(BaseHTTPRequestHandler):
+    def _send_cors_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self._send_cors_headers()
+        self.end_headers()
+
+    def _send_json(self, data, status_code=200):
+        body = json.dumps(data).encode("utf-8")
+        self.send_response(status_code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self._send_cors_headers()
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+
+        if path == "/api/health":
+            self._send_json({
+                "status": "healthy",
+                "institution": "Indian Institute of Information Technology, Allahabad",
+                "department": "Electronics and Communication Engineering",
+                "project": "Predictive Mathematical Modeling & Smart App for Mess Management",
+                "supervisor": "Dr. Kirtan Gopal Panda",
+                "authors": [
+                    {"name": "Varun Karankar", "roll": "IEC2023037"},
+                    {"name": "Aadarsh Singh", "roll": "IEC2023058"},
+                    {"name": "Tushar Garg", "roll": "IEC2023059"}
+                ]
+            })
+        elif path == "/api/calendar":
+            calendar_rows = load_csv_data(DATA_DIR / "iiita_calendar_2025_2026.csv")
+            self._send_json({
+                "total_days": len(calendar_rows),
+                "regimes": ["Normal", "Mid-Sem Exam", "End-Sem Exam", "Mid-Break", "End-Break", "Summer", "Pre-Semester", "Holiday"],
+                "sample": calendar_rows[:100]
+            })
+        elif path == "/api/menu":
+            menu_rows = load_csv_data(DATA_DIR / "mess_menu_weekly.csv")
+            self._send_json({
+                "rows": menu_rows,
+                "hostels": ["BH-2", "BH-3"]
+            })
+        elif path == "/api/benchmarks":
+            self._send_json({
+                "models": [
+                    {"model": "LightGBM (All Features)", "mae": 41.54, "rmse": 53.23, "mape": "32.14%", "wape": "25.95%", "picp_90": "72.4%", "speed": "0.4 ms (Instant)"},
+                    {"model": "LightGBM (No Weather Ablation)", "mae": 41.67, "rmse": 53.33, "mape": "32.08%", "wape": "26.03%", "picp_90": "72.1%", "speed": "0.4 ms"},
+                    {"model": "LightGBM (No Calendar Ablation)", "mae": 47.28, "rmse": 60.89, "mape": "38.09%", "wape": "29.54%", "picp_90": "68.3%", "speed": "0.3 ms"},
+                    {"model": "LightGBM Asymmetric (q75)", "mae": 48.54, "rmse": 61.49, "mape": "44.32%", "wape": "30.33%", "picp_90": "84.2%", "speed": "0.4 ms"},
+                    {"model": "Seasonal-Naive Baseline", "mae": 68.20, "rmse": 85.77, "mape": "65.57%", "wape": "42.61%", "picp_90": "—", "speed": "0.1 ms"},
+                    {"model": "Holt-Winters Smoothing", "mae": 69.56, "rmse": 83.47, "mape": "58.16%", "wape": "33.58%", "picp_90": "—", "speed": "12.3 ms"},
+                    {"model": "SARIMA (2,1,1)(1,1,1)", "mae": 72.88, "rmse": 86.01, "mape": "58.93%", "wape": "35.18%", "picp_90": "—", "speed": "145.0 ms"}
+                ],
+                "ops_comparison": {
+                    "rule_a_quantile": {
+                        "rule": "Quantile-blend (Rule A - Proposed)",
+                        "total_served": 97955,
+                        "total_procured": 114129,
+                        "waste_heads": 22915,
+                        "shortage_heads": 6741,
+                        "waste_pct": "20.08%",
+                        "shortage_rate_pct": "6.88%",
+                        "cost_per_event": "₹70.49",
+                        "total_cost_units": 43138
+                    },
+                    "rule_b_heuristic": {
+                        "rule": "LastWeek + 10% (Rule B - Traditional Guesswork)",
+                        "total_served": 97955,
+                        "total_procured": 105436,
+                        "waste_heads": 28110,
+                        "shortage_heads": 20629,
+                        "waste_pct": "26.66%",
+                        "shortage_rate_pct": "21.06%",
+                        "cost_per_event": "₹147.05",
+                        "total_cost_units": 89997
+                    },
+                    "shortage_reduction_pct": "67.3% lower shortage",
+                    "cost_savings_pct": "52.1% lower cost penalty"
+                },
+                "feature_importance": [
+                    {"feature": "lag_1d", "score": 465, "category": "Autoregressive"},
+                    {"feature": "festival_kernel", "score": 368, "category": "Hawkes Event Kernel"},
+                    {"feature": "lag_14d", "score": 356, "category": "Autoregressive"},
+                    {"feature": "roll7d_mean", "score": 348, "category": "Rolling Statistics"},
+                    {"feature": "roll14d_std", "score": 303, "category": "Rolling Statistics"},
+                    {"feature": "days_to_next_exam", "score": 192, "category": "Calendar Dynamics"},
+                    {"feature": "temp_max", "score": 165, "category": "Weather Signal"},
+                    {"feature": "has_dessert", "score": 142, "category": "Menu Feature"},
+                    {"feature": "precip_mm", "score": 116, "category": "Weather Signal"},
+                    {"feature": "is_fast_food_item", "score": 108, "category": "Menu Feature"}
+                ],
+                "kitchen_tolerances": {
+                    "within_25_portions": "38.56%",
+                    "within_35_portions": "50.33%",
+                    "within_50_portions": "66.99%"
+                }
+            })
+        elif path == "/api/telemetry/stats":
+            self._send_json({
+                "total_scans_today": len(telemetry_state["live_scans"]),
+                "recent_scans": telemetry_state["live_scans"][:10],
+                "feedback": telemetry_state["feedback"]
+            })
+        else:
+            self._send_json({"error": "Not Found"}, 404)
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        path = parsed.path
+        content_length = int(self.headers.get("Content-Length", 0))
+        post_data = self.rfile.read(content_length)
+        data = {}
+        if post_data:
+            try:
+                data = json.loads(post_data.decode("utf-8"))
+            except Exception:
+                data = {}
+
+        if path == "/api/forecast":
+            res = compute_headcount(data)
+            self._send_json(res)
+        elif path == "/api/procurement":
+            res = compute_procurement(data)
+            self._send_json(res)
+        elif path == "/api/telemetry/swipe":
+            roll = str(data.get("roll", "IEC2023000")).upper()
+            hostel = data.get("hostel", "BH-2")
+            slot = data.get("slot", "dinner")
+            name = data.get("name") or f"Student {roll}"
+            scan = {
+                "id": len(telemetry_state["live_scans"]) + 1,
+                "roll": roll,
+                "name": name,
+                "hostel": hostel,
+                "slot": slot,
+                "timestamp": datetime.now().strftime("%H:%M:%S")
+            }
+            telemetry_state["live_scans"].insert(0, scan)
+            if len(telemetry_state["live_scans"]) > 30:
+                telemetry_state["live_scans"].pop()
+            self._send_json({
+                "status": "success",
+                "message": f"Verified check-in for {roll} at {hostel} ({slot.capitalize()})",
+                "scan": scan,
+                "total_active_scans": len(telemetry_state["live_scans"])
+            })
+        elif path == "/api/telemetry/feedback":
+            entry = {
+                "id": len(telemetry_state["feedback"]) + 1,
+                "roll": str(data.get("roll", "Anonymous")).upper(),
+                "rating": int(data.get("rating", 5)),
+                "comment": data.get("comment", ""),
+                "meal": data.get("meal", "Dinner"),
+                "date": "Just now"
+            }
+            telemetry_state["feedback"].insert(0, entry)
+            self._send_json({"status": "success", "entry": entry})
+        else:
+            self._send_json({"error": "Not Found"}, 404)
+
+def run(port=8000):
+    server_address = ("127.0.0.1", port)
+    httpd = HTTPServer(server_address, APIServerHandler)
+    print(f"IIITA Mess Management API Server running on http://127.0.0.1:{port}")
+    httpd.serve_forever()
+
+if __name__ == "__main__":
+    port = 8000
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+    run(port)

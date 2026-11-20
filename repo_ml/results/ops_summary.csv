@@ -1,0 +1,3 @@
+Rule,Total_Served,Total_Procured,Waste_Heads,Shortage_Heads,Waste_pct,Shortage_rate_pct,Total_Cost_Units,Cost_per_event
+Quantile-blend (Rule A),97955,114129,22915,6741,20.08,6.88,43138.0,70.49
+LastWeek+10% (Rule B),97955,105436,28110,20629,26.66,21.06,89997.0,147.05

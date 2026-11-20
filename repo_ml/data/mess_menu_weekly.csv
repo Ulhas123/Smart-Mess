@@ -1,0 +1,22 @@
+weekday,slot,items,has_dessert,is_fast_food_item,has_nonveg_option,is_special_item
+Monday,breakfast,"Chola samosa, meethi chutney, hari chutney, dalia; bread, butter, jam, egg/banana, tea, coffee, milk",0,1,0,0
+Monday,dinner,"Egg curry / Kadhai paneer, moong daal, rice, roti, gulab jamun; salad, mix achaar",1,0,1,1
+Monday,lunch,"Punjabi kadhi-pakode, aloo-shimlamirch, pineapple raita, jeera rice, roti; salad, mix achaar",0,0,0,0
+Tuesday,breakfast,"Uttapam, sambhar, coconut chutney, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",0,1,0,0
+Tuesday,dinner,"Veg kofta curry, arhar daal tadka, rice, roti, fruit custard; salad, mix achaar",1,0,0,1
+Tuesday,lunch,"Litti chokha, arhar daal, rice, lassi, sambhar; salad, mix achaar",0,0,0,1
+Wednesday,breakfast,"Pav bhaji, dalia, sprouts; bread, butter, jam, egg/banana, tea, coffee, milk",0,1,0,1
+Wednesday,dinner,"Chana masala, roti, arhar daal, veg fried rice, sooji halwa; salad, mix achaar",1,0,0,0
+Wednesday,lunch,"Kali masoor daal, kaddu sabzi, dahi, rice, puri, sambhar; salad, mix achaar",0,0,0,0
+Thursday,breakfast,"Medu vada, sambhar, coconut chutney, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",0,0,0,0
+Thursday,dinner,"Aloo-pattagobhi, roti, rajma, rice, milk cake; salad, mix achaar",1,0,0,1
+Thursday,lunch,"Safed matar masala, dal makhni, veg pulao, chaach, sambhar, roti; salad, mix achaar",0,0,0,0
+Friday,breakfast,"Poha + Haldiram bhujiya, jalebi, dalia; bread, butter, jam, egg/banana, tea, coffee, milk",1,0,0,1
+Friday,dinner,"Chicken curry/Paneer-pyaaz paratha, chutney, daal, rice, kaju katli; salad, mix achaar",1,0,1,1
+Friday,lunch,"Aloo bhujiya, chana daal tadka, rice, roti, dahi; salad, mix achaar",0,0,0,0
+Saturday,breakfast,"Masala dosa, coconut chutney, sambhar, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",0,1,0,0
+Saturday,dinner,"Soyabean-aloo, arhar dal tadka, veg pulao, roti, ice-cream; salad, mix achaar",1,0,0,1
+Saturday,lunch,"Chole bhature, rice, boondi raita, sambhar; salad, mix achaar",0,1,0,1
+Sunday,breakfast,"Aloo-pyaaz paratha, dahi, chutney, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",0,0,0,0
+Sunday,dinner,"Pasta / chowmein, veg manchurian, mix daal, rice, roti, sewai; salad, mix achaar",1,1,0,1
+Sunday,lunch,"Aloo jhol, arhar dal tadka, mix-veg raita, veg biryani, roti; salad, mix achaar",0,0,0,1

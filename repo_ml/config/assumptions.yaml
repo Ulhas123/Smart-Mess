@@ -1,0 +1,95 @@
+# ============================================================
+# assumptions.yaml
+# All tunable multipliers and their one-line rationale.
+# Edit any value here; re-run src/generate.py to regenerate.
+# THIS FILE IS PART OF A SYNTHETIC SIMULATION.
+# ============================================================
+
+# ── Hostel base capacity ──────────────────────────────────────
+capacity:
+  BH-2: 300      # veg hostel; assumed 50/50 split of ~600 total
+  BH-3: 300      # non-veg hostel
+
+# ── Base attendance fractions (slot-level, weekday, per hostel) ──
+# Source: placeholder 0.42/0.67/0.76 combined; split equally
+base_rates:
+  BH-2:
+    breakfast: 0.42
+    lunch: 0.67
+    dinner: 0.76
+  BH-3:
+    breakfast: 0.42
+    lunch: 0.67
+    dinner: 0.76
+
+# ── Weekday factors (multiplicative, relative to Monday=1.0) ──
+# Rationale: Tues/Wed/Thu are mid-week so very close to 1;
+# Friday afternoon slump (people travel home); weekends differ
+weekday_factors:
+  # slot: [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+  breakfast: [1.00, 0.98, 1.01, 1.04, 1.00, 0.72, 0.75]
+  lunch:     [1.00, 0.99, 0.98, 0.97, 0.98, 1.08, 1.10]
+  dinner:    [1.00, 0.97, 0.98, 0.92, 0.99, 1.02, 1.05]
+
+# ── Calendar multipliers ──────────────────────────────────────
+calendar:
+  end_break:       0.15   # Semester end break: campus nearly empty
+  mid_break:       0.35   # Mid-semester break: many go home
+  summer_sem:      0.30   # Summer semester: smaller batch on campus
+  pre_semester:    0.25   # Pre-semester days: students arriving
+  holiday:         0.82   # Gazetted holidays: moderate exodus
+  exam_period:     1.06   # Exams: students stay on campus & eat more
+  weekend_lunch:   1.05   # Weekends: more leisurely lunch
+  weekend_dinner:  1.02   # Weekends: slightly higher dinner
+  no_classes:      0.90   # No-class days: slight attendance drop
+  is_any_exam:     1.04   # Any exam flag (catchall)
+  pre_exam_2day:   1.02   # 2 days before exam starts: mild uptick
+
+# ── Festival / home-going event kernel parameters ──────────────
+# E_t = sum_k a_k * exp(-|t - tau_k| / b_k) subtracted from attendance
+# a_k = peak reduction fraction, b_k = half-life in days
+# Events: approximate day-of-year references filled in generate.py
+festival_kernel:
+  amplitude:    0.55   # Max fractional reduction at festival peak
+  half_life:    3.5    # Days for attenuation to halve (exponential)
+  # Named festivals and their approximate 1-indexed day-of-year:
+  events:
+    Holi:          [74, 0.60, 4.0]    # ~15 Mar; [doy, amplitude, half-life]
+    Diwali:        [307, 0.70, 5.0]   # ~3 Nov
+    Dussehra:      [294, 0.55, 4.0]   # ~21 Oct
+    ChhatPuja:     [311, 0.50, 3.0]   # ~7 Nov
+    IdulFitr:      [90, 0.45, 3.5]    # varies; approx 31 Mar 2025
+    IdulAdha:      [180, 0.40, 3.0]   # varies; approx late Jun
+    Christmas:     [359, 0.35, 3.0]   # 25 Dec
+    NewYear:       [1, 0.30, 2.0]     # 1 Jan
+    IndependenceDay: [227, 0.20, 1.5] # 15 Aug; short holiday
+    RepublicDay:   [26, 0.20, 1.5]    # 26 Jan
+
+# ── Menu multipliers ──────────────────────────────────────────
+# Rationale: crowd-favourite / premium items pull extra diners;
+# routine items are neutral. Applied to slot mu.
+menu_multipliers:
+  has_dessert:           1.06   # Dessert days get +6% attendance
+  is_fast_food_item:     1.05   # Fast-food style (chole bhature, dosa, etc.)
+  is_special_item:       1.04   # Biryani, kaju katli, ice-cream days
+  has_nonveg_option:     1.07   # Non-veg available (BH-3 dinner Mon & Fri only)
+  plain_day:             0.98   # Routine days slightly below average
+
+# ── Weather multipliers ──────────────────────────────────────
+weather:
+  rain_breakfast:  0.82  # Rainy morning → fewer diners for breakfast
+  rain_lunch:      0.96  # Rain at lunch has smaller effect
+  rain_dinner:     0.97  # Rain at dinner has smallest effect
+  high_heat_threshold_c: 40.0
+  high_heat_factor: 0.97  # Very hot days: slight reduction
+  cold_threshold_c: 10.0
+  cold_factor:      0.98  # Very cold mornings: slight breakfast drop
+
+# ── Negative-Binomial dispersion (heteroscedastic) ──────────
+negbin:
+  alpha0: 0.05   # Baseline dispersion (lower = less spread)
+  eta:    0.12   # Extra dispersion on exam/festival days
+  # Variance = mu + alpha * mu^2
+
+# ── Random seed ──────────────────────────────────────────────
+seed: 42
