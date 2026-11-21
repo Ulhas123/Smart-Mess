@@ -1,7 +1,11 @@
 import time
-import httpx
 from datetime import datetime
 from typing import Dict, Any
+
+try:
+    import httpx
+except ImportError:
+    httpx = None
 
 # Prayagraj (Allahabad), Uttar Pradesh Coordinates
 PRAYAGRAJ_LAT = 25.4358
@@ -76,6 +80,14 @@ def get_prayagraj_weather(force_refresh: bool = False) -> Dict[str, Any]:
 
     if not force_refresh and _weather_cache["data"] and (now_ts - _weather_cache["timestamp"] < CACHE_TTL_SECONDS):
         return _weather_cache["data"]
+
+    if httpx is None:
+        print("[Weather API] httpx library not available; using fallback Prayagraj weather profile.")
+        if _weather_cache["data"]:
+            return _weather_cache["data"]
+        fallback = _fallback_weather()
+        _weather_cache = {"data": fallback, "timestamp": now_ts}
+        return fallback
 
     try:
         with httpx.Client(timeout=6.0) as client:
