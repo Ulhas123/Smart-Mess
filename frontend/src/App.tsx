@@ -13,17 +13,23 @@ import {
 import { Brand, Button, Eyebrow } from "./components/UI"
 import OperationsConsole from "./features/operations/OperationsConsole"
 import StudentPortal from "./features/student/StudentPortal"
+import StudentAuth from "./features/auth/StudentAuth"
+import VendorAuth from "./features/auth/VendorAuth"
+import { WeatherWidget } from "./components/WeatherWidget"
 import { student } from "./data/demoData"
-import type { MealClaim, MealSession, Role, ScanResult } from "./types"
+import type { MealClaim, MealSession, Role, ScanResult, StudentUser, VendorUser } from "./types"
 
 function RoleLanding({ onSelect }: { onSelect: (role: Role) => void }) {
   return (
     <main className="landing">
       <div className="landing-glow landing-glow-a" />
       <div className="landing-glow landing-glow-b" />
-      <header className="landing-header">
+      <header className="landing-header" style={{ width: "100%", maxWidth: 1100, margin: "0 auto", padding: "20px 24px" }}>
         <Brand />
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          {/* Live Free Weather API Integration for Prayagraj, UP */}
+          <WeatherWidget variant="header" />
+
           <div className="landing-status">
             <span className="pulse-dot" />
             All dining systems operational
@@ -49,7 +55,7 @@ function RoleLanding({ onSelect }: { onSelect: (role: Role) => void }) {
             <em>Precisely managed.</em>
           </h1>
           <p>
-            Predictive mathematical demand modeling, real-time QR counter telemetry,
+            Predictive mathematical demand modeling, real-time QR turnstile counter telemetry,
             and zero-waste supply allocation for institutional dining.
           </p>
         </div>
@@ -86,12 +92,12 @@ function RoleLanding({ onSelect }: { onSelect: (role: Role) => void }) {
             <QrCode size={28} />
           </div>
           <div>
-            <Eyebrow>For residents</Eyebrow>
+            <Eyebrow>For residents (Roll No. Login & ID Card)</Eyebrow>
             <h2>Student portal</h2>
-            <p>Access meal pass, review weekly chef menus, monitor dining hall occupancy, and submit quality feedback.</p>
+            <p>Sign in with Roll No, upload college ID card during registration, generate meal pass QR code, review weekly menus, and inspect dining occupancy.</p>
           </div>
           <span className="role-action">
-            Enter portal <ArrowRight size={18} />
+            Enter student portal <ArrowRight size={18} />
           </span>
         </button>
 
@@ -104,12 +110,12 @@ function RoleLanding({ onSelect }: { onSelect: (role: Role) => void }) {
             <BarChart3 size={28} />
           </div>
           <div>
-            <Eyebrow>For dining teams</Eyebrow>
-            <h2>Operations console</h2>
-            <p>Quantile demand forecasting, What-If scenario simulator, counter QR sessions, procurement, staffing, and research benchmarks.</p>
+            <Eyebrow>For dining caterers (No Registration Needed)</Eyebrow>
+            <h2>Operations & vendor console</h2>
+            <p>Scan student QR passes to record attendance, verify allowed students, quantile forecasting, What-If simulator, and procurement planning.</p>
           </div>
           <span className="role-action">
-            Open console <ArrowRight size={18} />
+            Open vendor console <ArrowRight size={18} />
           </span>
         </button>
       </section>
@@ -164,14 +170,63 @@ function RoleLanding({ onSelect }: { onSelect: (role: Role) => void }) {
 export default function App() {
   const [role, setRole] = useState<Role | null>(null)
   
-  // Initialize with an active lunch session by default for instant testing
+  // Authenticated user state with localStorage caching
+  const [studentUser, setStudentUser] = useState<StudentUser | null>(() => {
+    try {
+      const saved = localStorage.getItem("iiita_mess_student")
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+
+  const [vendorUser, setVendorUser] = useState<VendorUser | null>(() => {
+    try {
+      const saved = localStorage.getItem("iiita_mess_vendor")
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+
+  const handleStudentLogin = (st: StudentUser) => {
+    setStudentUser(st)
+    try {
+      localStorage.setItem("iiita_mess_student", JSON.stringify(st))
+    } catch {}
+  }
+
+  const handleStudentLogout = () => {
+    setStudentUser(null)
+    setRole(null)
+    try {
+      localStorage.removeItem("iiita_mess_student")
+    } catch {}
+  }
+
+  const handleVendorLogin = (vd: VendorUser) => {
+    setVendorUser(vd)
+    try {
+      localStorage.setItem("iiita_mess_vendor", JSON.stringify(vd))
+    } catch {}
+  }
+
+  const handleVendorLogout = () => {
+    setVendorUser(null)
+    setRole(null)
+    try {
+      localStorage.removeItem("iiita_mess_vendor")
+    } catch {}
+  }
+
+  // Active meal session
   const [session, setSession] = useState<MealSession | null>(() => {
     const now = Date.now()
     return {
       id: "LN-2026-0612-A",
       mealPeriod: "Lunch",
-      startsAt: now - 30 * 60 * 1000, // started 30 mins ago
-      expiresAt: now + 90 * 60 * 1000, // 90 mins remaining
+      startsAt: now - 30 * 60 * 1000,
+      expiresAt: now + 90 * 60 * 1000,
       status: "active",
     }
   })
@@ -212,50 +267,85 @@ export default function App() {
   const scanSession = (): ScanResult => {
     if (!session) return { type: "unavailable" }
     if (session.mealPeriod !== "Lunch") return { type: "wrong-meal" }
+    const currentRoll = studentUser?.roll || student.id
     const existing = claims.find(
       (claim) =>
-        claim.studentId === student.id && claim.sessionId === session.id,
+        claim.studentId === currentRoll && claim.sessionId === session.id,
     )
     if (existing) return { type: "duplicate", claimedAt: existing.claimedAt }
     if (session.status !== "active" || session.expiresAt <= Date.now())
       return { type: "expired" }
     const claim: MealClaim = {
-      studentId: student.id,
+      studentId: currentRoll,
       sessionId: session.id,
       claimedAt: Date.now(),
-      studentName: student.name,
-      hostel: student.residence,
+      studentName: studentUser?.name || student.name,
+      hostel: studentUser?.hostel || student.residence,
       mealPeriod: session.mealPeriod,
     }
     setClaims((current) => [...current, claim])
     return { type: "success", claimedAt: claim.claimedAt }
   }
 
+  const currentRoll = studentUser?.roll || student.id
   const activeClaim = session
     ? claims.find(
         (claim) =>
-          claim.studentId === student.id && claim.sessionId === session.id,
+          claim.studentId === currentRoll && claim.sessionId === session.id,
       )
     : undefined
 
-  if (!role) return <RoleLanding onSelect={setRole} />
+  // Route 1: Landing Page
+  if (!role) {
+    return <RoleLanding onSelect={setRole} />
+  }
+
+  // Route 2: Student Flow
   if (role === "student") {
+    // If not logged in, show Student Login/Registration
+    if (!studentUser) {
+      return (
+        <StudentAuth
+          onLoginSuccess={handleStudentLogin}
+          onBack={() => setRole(null)}
+        />
+      )
+    }
+
+    // Once authenticated, show Student Portal
     return (
       <StudentPortal
+        studentUser={studentUser}
         session={session}
         claim={activeClaim}
         onScan={scanSession}
         onSwitch={() => setRole(null)}
+        onLogout={handleStudentLogout}
       />
     )
   }
+
+  // Route 3: Vendor / Operations Flow
+  // If not logged in, show Vendor Login (no register option)
+  if (!vendorUser) {
+    return (
+      <VendorAuth
+        onLoginSuccess={handleVendorLogin}
+        onBack={() => setRole(null)}
+      />
+    )
+  }
+
+  // Once authenticated, show Operations & Vendor Console
   return (
     <OperationsConsole
+      vendorUser={vendorUser}
       session={session}
       claims={claims}
       onGenerateSession={generateSession}
       onEndSession={endSession}
       onSwitch={() => setRole(null)}
+      onLogout={handleVendorLogout}
     />
   )
 }

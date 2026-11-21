@@ -2,15 +2,19 @@ import os
 import math
 import yaml
 import json
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+from backend import database
+from backend import weather
 
 app = FastAPI(
     title="IIITA Mess Demand Forecasting & Smart App API",
@@ -94,6 +98,7 @@ class ForecastRequest(BaseModel):
     academic_phase: Optional[str] = "Normal"
     days_to_exam: Optional[int] = 30
     festival_factor: Optional[float] = 0.0
+    use_live_weather: Optional[bool] = False
 
 class ProcurementRequest(BaseModel):
     headcount: int
@@ -112,6 +117,46 @@ class FeedbackRequest(BaseModel):
     rating: int
     comment: str
     meal: str
+
+class StudentRegisterRequest(BaseModel):
+    roll: str
+    name: str
+    hostel: str
+    password: str
+    id_card_data: str
+    id_card_filename: Optional[str] = "id_card.png"
+    email: Optional[str] = None
+
+class StudentLoginRequest(BaseModel):
+    roll: str
+    password: str
+
+class VendorLoginRequest(BaseModel):
+    vendor_id: str
+    password: str
+
+class GeneratePassRequest(BaseModel):
+    roll: str
+    slot: Optional[str] = None
+
+class ScanPassRequest(BaseModel):
+    qr_data: str
+    slot: Optional[str] = None
+
+class ToggleAllowedRequest(BaseModel):
+    roll: str
+    is_allowed: bool
+
+def get_current_meal_slot() -> str:
+    hour = datetime.now().hour
+    if 6 <= hour < 10:
+        return "Breakfast"
+    elif 10 <= hour < 15:
+        return "Lunch"
+    elif 15 <= hour < 18:
+        return "Snacks"
+    else:
+        return "Dinner"
 
 
 # --- Core Mathematical Simulator Functions ---
@@ -135,6 +180,18 @@ def compute_headcount(req: ForecastRequest) -> Dict[str, Any]:
     academic_phase = req.academic_phase or "Normal"
     days_to_exam = req.days_to_exam if req.days_to_exam is not None else 30
     festival_factor = req.festival_factor if req.festival_factor is not None else 0.0
+
+    # Live weather integration if requested
+    live_w = None
+    if getattr(req, "use_live_weather", False):
+        try:
+            live_w = weather.get_prayagraj_weather()
+            req.is_rainy = live_w.get("is_rainy", req.is_rainy)
+            req.temp_max = live_w.get("temp_max", req.temp_max)
+            req.temp_min = live_w.get("temp_min", req.temp_min)
+            req.precip_mm = live_w.get("precipitation_mm", req.precip_mm)
+        except Exception:
+            pass
 
     # Auto-lookup from calendar_df if date provided
     if req.date and not calendar_df.empty and "date" in calendar_df.columns:
@@ -462,6 +519,187 @@ def submit_feedback(req: FeedbackRequest):
     }
     telemetry_state["feedback"].insert(0, entry)
     return {"status": "success", "entry": entry}
+
+# --- Weather API (Prayagraj, UP) ---
+@app.get("/api/weather")
+def get_weather(refresh: bool = False):
+    """Returns live weather conditions for Prayagraj, UP from Open-Meteo API."""
+    return weather.get_prayagraj_weather(force_refresh=refresh)
+
+# --- Student & Vendor Authentication Routes ---
+@app.post("/api/auth/student/register")
+def register_student(req: StudentRegisterRequest):
+    """Registers a student with roll no as login id, password, and uploaded ID card."""
+    try:
+        student = database.register_student(
+            roll=req.roll,
+            name=req.name,
+            hostel=req.hostel,
+            password=req.password,
+            id_card_data=req.id_card_data,
+            id_card_filename=req.id_card_filename or "id_card.png",
+            email=req.email
+        )
+        return {"status": "success", "message": "Registration successful", "student": student}
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+@app.post("/api/auth/student/login")
+def login_student(req: StudentLoginRequest):
+    """Student login with Roll Number and password."""
+    student = database.verify_student(req.roll, req.password)
+    if not student:
+        raise HTTPException(status_code=401, detail="Invalid Roll Number or Password")
+    return {"status": "success", "message": "Login successful", "student": student}
+
+@app.post("/api/auth/vendor/login")
+def login_vendor(req: VendorLoginRequest):
+    """Vendor login with Vendor ID and password (vendors do not need to register)."""
+    vendor = database.verify_vendor(req.vendor_id, req.password)
+    if not vendor:
+        raise HTTPException(status_code=401, detail="Invalid Vendor ID or Password")
+    return {"status": "success", "message": "Vendor authorized", "vendor": vendor}
+
+# --- QR Code Pass Generation & Vendor Attendance Scanning ---
+@app.post("/api/attendance/generate-pass")
+def generate_meal_pass(req: GeneratePassRequest):
+    """Generates an authentic meal QR pass for a logged-in student."""
+    roll_upper = req.roll.strip().upper()
+    student = database.get_student(roll_upper)
+    if not student:
+        raise HTTPException(status_code=404, detail=f"Student {roll_upper} not found in mess registry")
+    
+    slot = req.slot or get_current_meal_slot()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    ts = int(datetime.now().timestamp() * 1000)
+    
+    # Hash token to ensure integrity
+    salt = "IIITA_MESS_2026_SECURE"
+    sig_raw = f"{roll_upper}:{slot}:{today_str}:{salt}"
+    signature = hashlib.sha256(sig_raw.encode("utf-8")).hexdigest()[:16]
+
+    pass_payload = {
+        "type": "IIITA_MESS_PASS",
+        "roll": roll_upper,
+        "name": student["name"],
+        "hostel": student["hostel"],
+        "slot": slot,
+        "date": today_str,
+        "timestamp": ts,
+        "signature": signature,
+        "is_allowed": bool(student["is_allowed"])
+    }
+
+    return {
+        "status": "success",
+        "pass_data": pass_payload,
+        "qr_string": json.dumps(pass_payload),
+        "is_allowed": bool(student["is_allowed"]),
+        "student": {
+            "roll": student["roll"],
+            "name": student["name"],
+            "hostel": student["hostel"],
+            "id_card_data": student.get("id_card_data")
+        }
+    }
+
+@app.post("/api/attendance/scan")
+def scan_student_qr_pass(req: ScanPassRequest):
+    """Vendor scans student QR pass to verify allowance and record mess attendance."""
+    raw_data = req.qr_data.strip()
+    roll = None
+    slot = req.slot or get_current_meal_slot()
+
+    # Parse JSON if structured QR payload
+    if raw_data.startswith("{") and raw_data.endswith("}"):
+        try:
+            parsed = json.loads(raw_data)
+            roll = parsed.get("roll")
+            # Validate expiration date if pass specifies date
+            pass_date = parsed.get("date")
+            today_str = datetime.now().strftime("%Y-%m-%d")
+            if pass_date and pass_date != today_str:
+                return {
+                    "status": "DENIED",
+                    "roll": (roll or "EXPIRED_PASS").upper(),
+                    "name": parsed.get("name", "Student"),
+                    "hostel": parsed.get("hostel", "N/A"),
+                    "slot": slot,
+                    "timestamp": datetime.now().strftime("%H:%M:%S"),
+                    "allowed": False,
+                    "reason": f"Expired Pass: Meal pass is dated {pass_date}, not today ({today_str}). Access Denied."
+                }
+            if not req.slot and parsed.get("slot"):
+                slot = parsed.get("slot")
+        except Exception:
+            roll = raw_data
+    elif ":" in raw_data:
+        parts = raw_data.split(":")
+        roll = parts[0].strip()
+        if not req.slot and len(parts) > 1 and parts[1].strip():
+            slot = parts[1].strip()
+    else:
+        roll = raw_data
+
+    if not roll:
+        raise HTTPException(status_code=400, detail="Invalid QR data: missing student roll number")
+
+    result = database.record_attendance(roll=roll, slot=slot)
+
+    # Sync into live telemetry queue if approved
+    if result.get("status") == "APPROVED":
+        new_scan = {
+            "id": len(telemetry_state["live_scans"]) + 1,
+            "roll": result["roll"],
+            "name": result["name"],
+            "hostel": result["hostel"],
+            "slot": result["slot"],
+            "timestamp": result["timestamp"]
+        }
+        telemetry_state["live_scans"].insert(0, new_scan)
+        if len(telemetry_state["live_scans"]) > 25:
+            telemetry_state["live_scans"].pop()
+
+    return result
+
+@app.get("/api/attendance/today")
+def get_today_attendance():
+    """Returns all attendance events recorded today."""
+    records = database.get_today_attendance()
+    return {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "total": len(records),
+        "records": records
+    }
+
+@app.get("/api/attendance/student/{roll}")
+def get_student_history(roll: str):
+    """Returns meal attendance history for a specific student."""
+    history = database.get_student_history(roll)
+    student = database.get_student(roll)
+    return {
+        "roll": roll.upper(),
+        "student": {
+            "roll": student["roll"],
+            "name": student["name"],
+            "hostel": student["hostel"],
+            "is_allowed": bool(student["is_allowed"])
+        } if student else None,
+        "history": history
+    }
+
+@app.get("/api/students/list")
+def list_students():
+    """Lists registered students and their allowed status for vendor management."""
+    return {"students": database.list_students()}
+
+@app.post("/api/students/toggle-allowed")
+def toggle_student_allowed(req: ToggleAllowedRequest):
+    """Vendor toggles student mess access permission."""
+    updated = database.toggle_student_status(req.roll, req.is_allowed)
+    return {"status": "success", "updated": updated}
 
 # Mount static build files for seamless local single-port deployment
 DIST_DIR = BASE_DIR / "frontend" / "dist"

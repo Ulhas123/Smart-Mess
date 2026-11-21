@@ -82,3 +82,67 @@ export type FeedbackItem = {
   meal: string
   timeAgo: string
 }
+
+export type StudentUser = {
+  roll: string
+  name: string
+  email?: string
+  hostel: string
+  is_allowed: boolean
+  id_card_data?: string
+  id_card_filename?: string
+  registered_at?: string
+}
+
+export type VendorUser = {
+  vendor_id: string
+  name: string
+  hostel: string
+}
+
+export type WeatherData = {
+  city: string
+  state: string
+  country: string
+  coordinates?: { latitude: number; longitude: number }
+  temperature: number
+  apparent_temperature: number
+  humidity: number
+  precipitation_mm: number
+  wind_speed_kmh: number
+  weather_code: number
+  condition: string
+  icon: string
+  is_day?: number
+  is_rainy: boolean
+  temp_max: number
+  temp_min: number
+  source?: string
+  updated_at: string
+}
+
+export type AttendanceRecord = {
+  id: number
+  roll: string
+  name: string
+  hostel: string
+  slot: string
+  date: string
+  timestamp: string
+  status: "APPROVED" | "DENIED" | "DUPLICATE"
+  reason?: string
+  id_card_data?: string
+}
+
+export type AttendanceScanResult = {
+  status: "APPROVED" | "DENIED" | "DUPLICATE"
+  roll: string
+  name: string
+  hostel: string
+  slot: string
+  timestamp: string
+  allowed: boolean
+  reason: string
+  id_card_data?: string
+  claimed_at?: string
+}

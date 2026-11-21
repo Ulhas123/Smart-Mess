@@ -3,10 +3,14 @@ import sys
 import math
 import json
 import csv
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+
+from backend import database
+from backend import weather
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ML_DIR = BASE_DIR / "repo_ml"
@@ -315,7 +319,62 @@ class APIServerHandler(BaseHTTPRequestHandler):
                 "recent_scans": telemetry_state["live_scans"][:10],
                 "feedback": telemetry_state["feedback"]
             })
+        elif path == "/api/weather":
+            self._send_json(weather.get_prayagraj_weather())
+        elif path == "/api/attendance/today":
+            records = database.get_today_attendance()
+            self._send_json({
+                "date": datetime.now().strftime("%Y-%m-%d"),
+                "total": len(records),
+                "records": records
+            })
+        elif path == "/api/students/list":
+            self._send_json({"students": database.list_students()})
+        elif path.startswith("/api/attendance/student/"):
+            roll = path.split("/api/attendance/student/")[1].strip()
+            history = database.get_student_history(roll)
+            student = database.get_student(roll)
+            self._send_json({
+                "roll": roll.upper(),
+                "student": {
+                    "roll": student["roll"],
+                    "name": student["name"],
+                    "hostel": student["hostel"],
+                    "is_allowed": bool(student["is_allowed"])
+                } if student else None,
+                "history": history
+            })
         else:
+            # Attempt to serve static frontend files
+            dist_dir = BASE_DIR / "frontend" / "dist"
+            rel_path = path.lstrip("/")
+            file_path = dist_dir / rel_path if rel_path else dist_dir / "index.html"
+            if not file_path.exists() or file_path.is_dir():
+                file_path = dist_dir / "index.html"
+
+            if file_path.exists() and file_path.is_file():
+                content_type = "text/plain"
+                ext = file_path.suffix.lower()
+                if ext == ".html": content_type = "text/html"
+                elif ext == ".js": content_type = "application/javascript"
+                elif ext == ".css": content_type = "text/css"
+                elif ext == ".svg": content_type = "image/svg+xml"
+                elif ext in [".png", ".jpg", ".jpeg", ".ico", ".webp"]: content_type = f"image/{ext[1:]}"
+                elif ext == ".json": content_type = "application/json"
+
+                try:
+                    with open(file_path, "rb") as f:
+                        body = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", content_type)
+                    self.send_header("Content-Length", str(len(body)))
+                    self._send_cors_headers()
+                    self.end_headers()
+                    self.wfile.write(body)
+                    return
+                except Exception:
+                    pass
+
             self._send_json({"error": "Not Found"}, 404)
 
     def do_POST(self):
@@ -369,6 +428,97 @@ class APIServerHandler(BaseHTTPRequestHandler):
             }
             telemetry_state["feedback"].insert(0, entry)
             self._send_json({"status": "success", "entry": entry})
+        elif path == "/api/auth/student/register":
+            try:
+                st = database.register_student(
+                    roll=data.get("roll", ""),
+                    name=data.get("name", ""),
+                    hostel=data.get("hostel", ""),
+                    password=data.get("password", ""),
+                    id_card_data=data.get("id_card_data", ""),
+                    id_card_filename=data.get("id_card_filename", "id_card.png"),
+                    email=data.get("email")
+                )
+                self._send_json({"status": "success", "student": st})
+            except Exception as e:
+                self._send_json({"detail": str(e)}, 400)
+        elif path == "/api/auth/student/login":
+            st = database.verify_student(data.get("roll", ""), data.get("password", ""))
+            if st:
+                self._send_json({"status": "success", "student": st})
+            else:
+                self._send_json({"detail": "Invalid roll number or password"}, 401)
+        elif path == "/api/auth/vendor/login":
+            v = database.verify_vendor(data.get("vendor_id", ""), data.get("password", ""))
+            if v:
+                self._send_json({"status": "success", "vendor": v})
+            else:
+                self._send_json({"detail": "Invalid vendor ID or password"}, 401)
+        elif path == "/api/attendance/generate-pass":
+            roll = data.get("roll", "").upper()
+            slot = data.get("slot", "Lunch")
+            st = database.get_student(roll)
+            if not st:
+                self._send_json({"detail": "Student not found"}, 404)
+            else:
+                today = datetime.now().strftime("%Y-%m-%d")
+                ts = int(datetime.now().timestamp() * 1000)
+                sig = hashlib.sha256(f"{roll}:{slot}:{today}:SALT".encode()).hexdigest()[:16]
+                payload = {
+                    "type": "IIITA_MESS_PASS",
+                    "roll": roll,
+                    "name": st["name"],
+                    "hostel": st["hostel"],
+                    "slot": slot,
+                    "date": today,
+                    "timestamp": ts,
+                    "signature": sig,
+                    "is_allowed": bool(st["is_allowed"])
+                }
+                self._send_json({
+                    "status": "success",
+                    "pass_data": payload,
+                    "qr_string": json.dumps(payload),
+                    "is_allowed": bool(st["is_allowed"]),
+                    "student": st
+                })
+        elif path == "/api/attendance/scan":
+            raw_data = str(data.get("qr_data", "")).strip()
+            slot = data.get("slot", "Lunch")
+            roll = raw_data
+            if raw_data.startswith("{") and raw_data.endswith("}"):
+                try:
+                    p = json.loads(raw_data)
+                    roll = p.get("roll", raw_data)
+                    pass_date = p.get("date")
+                    today_str = datetime.now().strftime("%Y-%m-%d")
+                    if pass_date and pass_date != today_str:
+                        self._send_json({
+                            "status": "DENIED",
+                            "roll": (roll or "EXPIRED_PASS").upper(),
+                            "name": p.get("name", "Student"),
+                            "hostel": p.get("hostel", "N/A"),
+                            "slot": slot,
+                            "timestamp": datetime.now().strftime("%H:%M:%S"),
+                            "allowed": False,
+                            "reason": f"Expired Pass: Meal pass is dated {pass_date}, not today ({today_str}). Access Denied."
+                        })
+                        return
+                    if not data.get("slot") and p.get("slot"):
+                        slot = p.get("slot")
+                except Exception:
+                    pass
+            elif ":" in raw_data:
+                parts = raw_data.split(":")
+                roll = parts[0].strip()
+                if not data.get("slot") and len(parts) > 1 and parts[1].strip():
+                    slot = parts[1].strip()
+
+            res = database.record_attendance(roll=roll, slot=slot)
+            self._send_json(res)
+        elif path == "/api/students/toggle-allowed":
+            res = database.toggle_student_status(data.get("roll", ""), data.get("is_allowed", True))
+            self._send_json({"status": "success", "updated": res})
         else:
             self._send_json({"error": "Not Found"}, 404)
 

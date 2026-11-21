@@ -1,27 +1,38 @@
-import { useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState } from "react"
 import {
+  AlertCircle,
   ArrowLeft,
   CalendarDays,
   Check,
+  CheckCircle2,
   ChefHat,
   Clock3,
-  QrCode,
+  Download,
+  History,
+  IdCard,
+  LogOut,
+  QrCode as QrCodeIcon,
+  RefreshCw,
   ScanLine,
+  Send,
+  ShieldAlert,
+  ShieldCheck,
   Sparkles,
   Star,
-  Send,
   Users,
   Utensils,
   XCircle,
 } from "lucide-react"
 import confetti from "canvas-confetti"
-import { initialFeedbacks, menuDays, student } from "../../data/demoData"
+import { initialFeedbacks, menuDays } from "../../data/demoData"
 import type {
+  AttendanceRecord,
   FeedbackItem,
   MealClaim,
   MealPeriod,
   MealSession,
   ScanResult,
+  StudentUser,
 } from "../../types"
 import {
   Brand,
@@ -31,162 +42,154 @@ import {
   SegmentedControl,
   StatusChip,
 } from "../../components/UI"
-import { submitSwipe, submitFeedback } from "../../services/api"
+import { QRCode } from "../../components/QRCode"
+import { WeatherWidget } from "../../components/WeatherWidget"
+import {
+  generateMealPass,
+  fetchStudentHistory,
+  submitFeedback,
+} from "../../services/api"
 
 type StudentPortalProps = {
+  studentUser?: StudentUser
   session: MealSession | null
   claim: MealClaim | undefined
   onScan: () => ScanResult
   onSwitch: () => void
+  onLogout?: () => void
 }
 
 const mealPeriods: MealPeriod[] = ["Breakfast", "Lunch", "Snacks", "Dinner"]
 
-function formatTime(timestamp: number) {
-  return new Intl.DateTimeFormat("en-IN", {
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(timestamp)
-}
-
-function ScanModal({
-  session,
-  onScan,
-  onClose,
-}: {
-  session: MealSession | null
-  onScan: () => ScanResult
-  onClose: () => void
-}) {
-  const [result, setResult] = useState<ScanResult | null>(null)
-
-  const copy = useMemo(() => {
-    if (!result) return null
-    if (result.type === "success")
-      return {
-        icon: <Check size={34} />,
-        title: "Meal access approved",
-        text: `Lunch recorded at ${formatTime(result.claimedAt)}. Entry is authorized for ${student.name} (${student.id}).`,
-        tone: "success",
-      }
-    if (result.type === "duplicate")
-      return {
-        icon: <Check size={34} />,
-        title: "Meal already claimed",
-        text: `Lunch was recorded at ${formatTime(result.claimedAt)}. Duplicate entry blocked per meal policy.`,
-        tone: "duplicate",
-      }
-    if (result.type === "wrong-meal")
-      return {
-        icon: <XCircle size={34} />,
-        title: "Not valid for this meal",
-        text: "The scanned QR applies to a different service slot. Please verify with mess supervisor.",
-        tone: "error",
-      }
-    return {
-      icon: <Clock3 size={34} />,
-      title:
-        result.type === "expired"
-          ? "QR session expired"
-          : "Meal session has not started",
-      text:
-        result.type === "expired"
-          ? "The two-hour service window has ended. Please speak to the service desk team."
-          : "Operations has not opened the lunch session yet. Service opens at 12:30 PM.",
-      tone: "error",
-    }
-  }, [result])
-
-  const handleSimulateScan = () => {
-    const res = onScan()
-    setResult(res)
-    if (res.type === "success") {
-      try {
-        confetti({
-          particleCount: 50,
-          spread: 60,
-          origin: { y: 0.7 },
-        })
-      } catch (e) {
-        console.log("Confetti trigger", e)
-      }
-      submitSwipe({
-        student_id: student.id,
-        hostel: "BH-2",
-        slot: "lunch",
-      })
-    }
-  }
-
-  return (
-    <Modal title={result ? "Access Verification" : "Scan Vendor Counter QR"} onClose={onClose}>
-      {!result ? (
-        <div className="scanner-body">
-          <div className="scanner-frame">
-            <span className="scan-corner corner-a" />
-            <span className="scan-corner corner-b" />
-            <span className="scan-corner corner-c" />
-            <span className="scan-corner corner-d" />
-            <ScanLine size={52} strokeWidth={1.2} />
-            <div className="scan-line" />
-          </div>
-          <div className="scanner-copy">
-            <h3>Scan the displayed counter QR</h3>
-            <p>
-              {session?.status === "active"
-                ? `Lunch session ${session.id} is live. Align your device with the counter display.`
-                : "No active lunch session is available on the counter display."}
-            </p>
-          </div>
-          <Button
-            icon={<ScanLine size={18} />}
-            onClick={handleSimulateScan}
-          >
-            Simulate scan
-          </Button>
-          <small className="prototype-note">
-            Integrated Telemetry · Deterministic Verification
-          </small>
-        </div>
-      ) : (
-        <div className={`scan-result scan-result-${copy?.tone}`}>
-          <div className="result-icon">{copy?.icon}</div>
-          <Eyebrow>Student ID · {student.id}</Eyebrow>
-          <h3>{copy?.title}</h3>
-          <p>{copy?.text}</p>
-          <Button onClick={onClose}>
-            {result.type === "success" ? "Proceed to dining line" : "Close"}
-          </Button>
-        </div>
-      )}
-    </Modal>
-  )
+function getCurrentSlot(): MealPeriod {
+  const h = new Date().getHours()
+  if (h >= 7 && h < 11) return "Breakfast"
+  if (h >= 11 && h < 16) return "Lunch"
+  if (h >= 16 && h < 18) return "Snacks"
+  return "Dinner"
 }
 
 export default function StudentPortal({
+  studentUser,
   session,
   claim,
   onScan,
   onSwitch,
+  onLogout,
 }: StudentPortalProps) {
-  const [section, setSection] = useState<"today" | "menu">("today")
-  const [scannerOpen, setScannerOpen] = useState(false)
-  const [dayIndex, setDayIndex] = useState(0)
-  const [period, setPeriod] = useState<MealPeriod>("Lunch")
-  const [hostel, setHostel] = useState<"BH-2" | "BH-3">("BH-2")
+  // Use passed studentUser or fallback to default student
+  const [currentStudent, setCurrentStudent] = useState<StudentUser>(() => studentUser || {
+    roll: "IEC2023059",
+    name: "Tushar Garg",
+    hostel: "BH-2",
+    is_allowed: true,
+    email: "iec2023059@iiita.ac.in",
+  })
+  const activeStudent = currentStudent
 
-  // Feedback state
+  const [section, setSection] = useState<"today" | "menu" | "history">("today")
+  const [dayIndex, setDayIndex] = useState(0)
+  const [selectedSlot, setSelectedSlot] = useState<MealPeriod>(getCurrentSlot())
+  const [hostel, setHostel] = useState<string>(activeStudent.hostel || "BH-2")
+
+  // QR Pass State
+  const [passData, setPassData] = useState<any | null>(null)
+  const [qrString, setQrString] = useState<string>("")
+  const [passLoading, setPassLoading] = useState(false)
+  const [passExpiryTimer, setPassExpiryTimer] = useState<number>(1800) // 30 min timer
+  const [showIdCardModal, setShowIdCardModal] = useState(false)
+  const [copiedToken, setCopiedToken] = useState(false)
+
+  // Attendance History State
+  const [historyRecords, setHistoryRecords] = useState<AttendanceRecord[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+
+  // Feedback State
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState("")
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(initialFeedbacks)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
-  const currentMenu =
-    menuDays[dayIndex]?.meals?.[period] || menuDays[0].meals.Lunch
-  const sessionActive =
-    session?.status === "active" &&
-    session.expiresAt > Date.now() &&
-    session.startsAt <= Date.now()
+  // Sync latest student status (is_allowed) from backend on mount
+  useEffect(() => {
+    let mounted = true
+    fetchStudentHistory(activeStudent.roll).then((res) => {
+      if (mounted && res?.student) {
+        setCurrentStudent((prev) => ({
+          ...prev,
+          name: res.student.name || prev.name,
+          hostel: res.student.hostel || prev.hostel,
+          is_allowed: Boolean(res.student.is_allowed),
+        }))
+        if (res.history) {
+          setHistoryRecords(res.history)
+        }
+      }
+    }).catch(() => {})
+    return () => { mounted = false }
+  }, [activeStudent.roll])
+
+  const handleGeneratePass = async (slot: MealPeriod) => {
+    setPassLoading(true)
+    try {
+      const res = await generateMealPass(activeStudent.roll, slot)
+      setPassData(res.pass_data)
+      setQrString(res.qr_string)
+      setPassExpiryTimer(1800)
+    } catch (err) {
+      console.warn("Pass generation error", err)
+    } finally {
+      setPassLoading(false)
+    }
+  }
+
+  // Auto-generate QR pass on load if allowed
+  useEffect(() => {
+    if (activeStudent.is_allowed) {
+      handleGeneratePass(selectedSlot)
+    }
+  }, [selectedSlot, activeStudent.roll, activeStudent.is_allowed])
+
+  // Countdown timer for active pass
+  useEffect(() => {
+    if (!passData) return
+    const interval = setInterval(() => {
+      setPassExpiryTimer((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [passData])
+
+  const downloadQrPass = () => {
+    const qrImg = document.querySelector(".qr-code-wrapper img") as HTMLImageElement
+    if (qrImg && qrImg.src) {
+      const a = document.createElement("a")
+      a.href = qrImg.src
+      a.download = `IIITA_Pass_${activeStudent.roll}_${selectedSlot}.png`
+      a.click()
+    }
+  }
+
+  const copyQrToken = () => {
+    if (qrString) {
+      navigator.clipboard.writeText(qrString)
+      setCopiedToken(true)
+      setTimeout(() => setCopiedToken(false), 2000)
+    }
+  }
+
+  const loadAttendanceHistory = async () => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetchStudentHistory(activeStudent.roll)
+      if (res && res.history) {
+        setHistoryRecords(res.history)
+      }
+    } catch (e) {
+      console.warn("History load error", e)
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
 
   const handleFeedbackSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -194,11 +197,11 @@ export default function StudentPortal({
 
     const newFeedback: FeedbackItem = {
       id: Date.now(),
-      roll: student.id,
-      name: student.name,
+      roll: activeStudent.roll,
+      name: activeStudent.name,
       rating,
       comment: comment.trim(),
-      meal: "Lunch",
+      meal: selectedSlot,
       timeAgo: "Just now",
     }
 
@@ -206,305 +209,790 @@ export default function StudentPortal({
     setComment("")
     setFeedbackSubmitted(true)
     submitFeedback({
-      roll: student.id,
+      roll: activeStudent.roll,
       rating,
       comment: comment.trim(),
-      meal: "Lunch",
+      meal: selectedSlot,
     })
   }
 
+  const formatTimer = (secs: number) => {
+    const m = Math.floor(secs / 60)
+    const s = secs % 60
+    return `${m}:${s < 10 ? "0" : ""}${s}`
+  }
+
+  const currentMenu =
+    menuDays[dayIndex]?.meals?.[selectedSlot] || menuDays[0].meals.Lunch
+
   return (
-    <div className="student-app">
-      <header className="student-header">
-        <Brand />
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="segmented-control" style={{ padding: 2 }}>
-            <button
-              className={hostel === "BH-2" ? "is-active" : ""}
-              onClick={() => setHostel("BH-2")}
-              style={{ padding: "4px 10px", fontSize: 11 }}
+    <div className="student-app" style={{ minHeight: "100vh", background: "var(--ivory)" }}>
+      {/* Top Header */}
+      <header 
+        className="student-header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "16px 24px",
+          borderBottom: "1px solid var(--line)",
+          background: "var(--paper)",
+          flexWrap: "wrap",
+          gap: 12
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <Brand />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: 20 }}>
+            <span className="pulse-dot" />
+            <span>Student Portal</span>
+          </div>
+        </div>
+
+        {/* Live Weather Widget for Prayagraj, UP */}
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <WeatherWidget variant="compact" />
+
+          {/* Student Profile Pill */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button 
+              className="profile-button" 
+              onClick={() => setShowIdCardModal(true)}
+              title="Click to view official College ID Card"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 12px",
+                borderRadius: 24,
+                border: "1px solid var(--line)",
+                background: "var(--paper)",
+                cursor: "pointer"
+              }}
             >
-              BH-2
+              <div 
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: "#0f172a",
+                  color: "#ffffff",
+                  display: "grid",
+                  placeItems: "center",
+                  fontSize: 11,
+                  fontWeight: 700
+                }}
+              >
+                {activeStudent.name.slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ textAlign: "left", lineHeight: 1.2 }}>
+                <strong style={{ fontSize: 13, display: "block" }}>{activeStudent.name}</strong>
+                <small style={{ fontSize: 10, color: "var(--muted)" }}>{activeStudent.roll} · {activeStudent.hostel}</small>
+              </div>
             </button>
+
             <button
-              className={hostel === "BH-3" ? "is-active" : ""}
-              onClick={() => setHostel("BH-3")}
-              style={{ padding: "4px 10px", fontSize: 11 }}
+              onClick={onLogout || onSwitch}
+              className="button button-ghost"
+              style={{ padding: "6px 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+              title="Sign Out of Student Account"
             >
-              BH-3
+              <LogOut size={14} />
+              <span>Sign out</span>
             </button>
           </div>
-          <button className="profile-button" onClick={onSwitch}>
-            <span>TG</span>
-            <span className="profile-copy">
-              <strong>{student.name}</strong>
-              <small>{hostel} · Switch workspace</small>
-            </span>
-          </button>
         </div>
       </header>
 
-      <main className="student-main">
-        {section === "today" ? (
+      {/* Main Container */}
+      <main className="student-main" style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 20px" }}>
+        
+        {/* Navigation Bar / Tabs */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24, flexWrap: "wrap", gap: 12 }}>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              onClick={() => setSection("today")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: section === "today" ? "#0f172a" : "rgba(0,0,0,0.06)",
+                color: section === "today" ? "#ffffff" : "var(--ink)",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              <QrCodeIcon size={16} />
+              <span>Digital Meal Pass</span>
+            </button>
+
+            <button
+              onClick={() => setSection("menu")}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: section === "menu" ? "#0f172a" : "rgba(0,0,0,0.06)",
+                color: section === "menu" ? "#ffffff" : "var(--ink)",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              <CalendarDays size={16} />
+              <span>Mess Menu</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setSection("history")
+                loadAttendanceHistory()
+              }}
+              style={{
+                padding: "8px 16px",
+                borderRadius: 10,
+                border: "none",
+                background: section === "history" ? "#0f172a" : "rgba(0,0,0,0.06)",
+                color: section === "history" ? "#ffffff" : "var(--ink)",
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              <History size={16} />
+              <span>My Attendance History</span>
+            </button>
+          </div>
+
+          {/* College ID Card Quick Trigger */}
+          <button
+            onClick={() => setShowIdCardModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              background: "rgba(56, 189, 248, 0.1)",
+              border: "1px solid rgba(56, 189, 248, 0.3)",
+              color: "#0284c7",
+              borderRadius: 8,
+              padding: "6px 12px",
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer"
+            }}
+          >
+            <IdCard size={15} />
+            <span>View College ID Card</span>
+          </button>
+        </div>
+
+        {/* SECTION: TODAY / DIGITAL MEAL PASS WITH QR CODE */}
+        {section === "today" && (
           <>
-            <section className="student-intro">
-              <div>
-                <Eyebrow>Thursday · 12 June · {hostel}</Eyebrow>
-                <h1>Lunch service</h1>
-                <p>Real-time meal pass, occupancy tracking, and chef's menu.</p>
-              </div>
-              <div className="service-pill">
-                <span className={sessionActive ? "pulse-dot" : "quiet-dot"} />
-                {sessionActive ? "Lunch service live" : "Session not started"}
-              </div>
-            </section>
-
-            <section className="student-hero-grid">
-              <article className="meal-pass-card">
-                <div className="meal-pass-top">
-                  <div>
-                    <Eyebrow>Digital Meal Pass</Eyebrow>
-                    <h2>{claim ? "Lunch recorded" : "Meal access status"}</h2>
-                  </div>
-                  <QrCode size={30} />
-                </div>
-                <div className="meal-pass-time">
-                  <Clock3 size={18} />
-                  <span>12:30 – 14:30</span>
-                </div>
-                <p>
-                  {claim
-                    ? `Verified at ${formatTime(claim.claimedAt)}. Rescanning will confirm your previous claim.`
-                    : sessionActive
-                      ? "Scan the counter QR code at the dining hall entrance to claim entry."
-                      : "The dining supervisor will activate the counter QR code at service opening."}
-                </p>
-                <Button
-                  variant={claim ? "secondary" : "primary"}
-                  icon={claim ? <Check size={18} /> : <ScanLine size={18} />}
-                  onClick={() => setScannerOpen(true)}
-                >
-                  {claim ? "View claim pass" : "Scan meal QR"}
-                </Button>
-                <span className="card-serial">
-                  MESA / {student.id} / LUNCH / {hostel}
-                </span>
-              </article>
-
-              <article className="occupancy-card">
-                <div className="card-heading">
-                  <div>
-                    <Eyebrow>{hostel} Dining Floor</Eyebrow>
-                    <h2>Moderate occupancy</h2>
-                  </div>
-                  <StatusChip tone="good">Live</StatusChip>
-                </div>
-                <div className="occupancy-figure">
-                  <strong>62%</strong>
-                  <span>310 of 500 seats</span>
-                </div>
-                <div className="capacity-track">
-                  <span style={{ width: "62%" }} />
-                </div>
-                <div className="occupancy-meta">
-                  <span>
-                    <Clock3 size={16} /> ~4 min queue wait
-                  </span>
-                  <span>
-                    <Sparkles size={16} /> Optimal arrival after 1:40 PM
-                  </span>
-                </div>
-              </article>
-            </section>
-
-            <section className="today-menu">
-              <div className="section-heading">
+            {/* Eligibility Banner */}
+            {!activeStudent.is_allowed ? (
+              <div 
+                style={{
+                  background: "#fee2e2",
+                  border: "1px solid #ef4444",
+                  borderRadius: 12,
+                  padding: "16px 20px",
+                  marginBottom: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 14,
+                  color: "#991b1b"
+                }}
+              >
+                <ShieldAlert size={28} style={{ flexShrink: 0 }} />
                 <div>
-                  <Eyebrow>Chef’s selection</Eyebrow>
-                  <h2>Today’s lunch</h2>
+                  <strong style={{ fontSize: 15, display: "block" }}>Mess Access Restricted (Not Allowed)</strong>
+                  <p style={{ fontSize: 13, margin: "2px 0 0" }}>
+                    Your student account is currently blocked from dining hall entry due to pending mess fee dues or unverified identity card. Please contact the warden's office.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div 
+                style={{
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: 12,
+                  padding: "12px 18px",
+                  marginBottom: 24,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  color: "#166534",
+                  fontSize: 13
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <ShieldCheck size={20} style={{ color: "#16a34a" }} />
+                  <div>
+                    <strong>Authorized Mess Member</strong> · All service turnstiles active for {activeStudent.hostel}
+                  </div>
+                </div>
+                <span style={{ fontSize: 11, background: "#dcfce7", padding: "4px 8px", borderRadius: 6, fontWeight: 600 }}>
+                  Active Enrolled Resident
+                </span>
+              </div>
+            )}
+
+            {/* Grid: QR Code Generator Pass & Prayagraj Weather + Occupancy */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 24, marginBottom: 28 }}>
+              
+              {/* PRIMARY FEATURE: DYNAMIC QR CODE PASS GENERATOR */}
+              <article 
+                style={{
+                  background: "var(--paper)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 18,
+                  padding: 24,
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.05)",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between"
+                }}
+              >
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+                    <div>
+                      <Eyebrow>Turnstile Verification Pass</Eyebrow>
+                      <h2 style={{ fontSize: 22, marginTop: 4 }}>Student Entry QR Pass</h2>
+                      <p style={{ fontSize: 12, color: "var(--muted)" }}>
+                        Present this QR code to the mess vendor counter to mark attendance.
+                      </p>
+                    </div>
+
+                    <div style={{ display: "flex", gap: 4 }}>
+                      {mealPeriods.map((slot) => (
+                        <button
+                          key={slot}
+                          onClick={() => setSelectedSlot(slot)}
+                          style={{
+                            padding: "4px 8px",
+                            fontSize: 11,
+                            borderRadius: 6,
+                            border: "none",
+                            background: selectedSlot === slot ? "#0f172a" : "rgba(0,0,0,0.05)",
+                            color: selectedSlot === slot ? "#ffffff" : "var(--ink)",
+                            fontWeight: 600,
+                            cursor: "pointer"
+                          }}
+                        >
+                          {slot}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* QR Code Presentation Box */}
+                  <div 
+                    style={{
+                      background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
+                      border: "1px dashed rgba(0,0,0,0.15)",
+                      borderRadius: 14,
+                      padding: "20px",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textAlign: "center"
+                    }}
+                  >
+                    {activeStudent.is_allowed ? (
+                      <>
+                        <div style={{ marginBottom: 12 }}>
+                          <QRCode 
+                            value={qrString || `${activeStudent.roll}:${selectedSlot}`} 
+                            size={180} 
+                          />
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#15803d", fontWeight: 600, marginBottom: 4 }}>
+                          <CheckCircle2 size={16} />
+                          <span>Pass Active for {selectedSlot}</span>
+                        </div>
+
+                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                          Roll: <strong>{activeStudent.roll}</strong> · {activeStudent.name} ({activeStudent.hostel})
+                        </div>
+
+                        <div 
+                          style={{
+                            marginTop: 10,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 6,
+                            background: "rgba(0,0,0,0.06)",
+                            padding: "3px 10px",
+                            borderRadius: 12,
+                            fontSize: 11,
+                            fontFamily: "monospace"
+                          }}
+                        >
+                          <Clock3 size={12} />
+                          <span>Session countdown: {formatTimer(passExpiryTimer)}</span>
+                        </div>
+
+                        {/* Quick action buttons for QR Pass */}
+                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                          <button
+                            type="button"
+                            onClick={downloadQrPass}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                              background: "rgba(0,0,0,0.05)",
+                              border: "1px solid var(--line)",
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                            title="Download QR code image to upload into vendor turnstile scanner"
+                          >
+                            <Download size={12} />
+                            <span>Download Pass</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={copyQrToken}
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 4,
+                              background: copiedToken ? "#dcfce7" : "rgba(0,0,0,0.05)",
+                              border: copiedToken ? "1px solid #86efac" : "1px solid var(--line)",
+                              color: copiedToken ? "#15803d" : "inherit",
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: "pointer"
+                            }}
+                            title="Copy QR token string to paste into vendor scanner"
+                          >
+                            <Check size={12} />
+                            <span>{copiedToken ? "Copied!" : "Copy Token"}</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div style={{ padding: 20, textAlign: "center", color: "#991b1b" }}>
+                        <XCircle size={44} style={{ margin: "0 auto 10px" }} />
+                        <strong>QR Pass Disabled</strong>
+                        <p style={{ fontSize: 12, marginTop: 4 }}>
+                          You are currently barred from generating meal access codes.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 18, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <button
+                    onClick={() => handleGeneratePass(selectedSlot)}
+                    disabled={passLoading || !activeStudent.is_allowed}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      background: "none",
+                      border: "1px solid var(--line)",
+                      borderRadius: 8,
+                      padding: "6px 12px",
+                      fontSize: 12,
+                      cursor: "pointer"
+                    }}
+                  >
+                    <RefreshCw size={13} className={passLoading ? "spin" : ""} />
+                    <span>Regenerate QR</span>
+                  </button>
+
+                  <span style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    Turnstile QR Pass · IIITA Dining
+                  </span>
+                </div>
+              </article>
+
+              {/* SECONDARY COLUMN: PRAYAGRAJ WEATHER & FLOOR OCCUPANCY */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* Live Weather Widget for Prayagraj, UP */}
+                <WeatherWidget variant="card" />
+
+                {/* Occupancy card */}
+                <article 
+                  style={{
+                    background: "var(--paper)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 16,
+                    padding: 20,
+                    boxShadow: "0 6px 20px rgba(0,0,0,0.04)"
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+                    <div>
+                      <Eyebrow>{activeStudent.hostel} Dining Hall</Eyebrow>
+                      <h3 style={{ fontSize: 18, marginTop: 2 }}>Current Hall Occupancy</h3>
+                    </div>
+                    <StatusChip tone="good">Real-Time</StatusChip>
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
+                    <strong style={{ fontSize: 32, fontWeight: 700 }}>58%</strong>
+                    <span style={{ fontSize: 12, color: "var(--muted)" }}>290 of 500 seated</span>
+                  </div>
+
+                  <div className="capacity-track" style={{ height: 6, background: "rgba(0,0,0,0.08)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
+                    <div style={{ width: "58%", height: "100%", background: "#0f172a", borderRadius: 3 }} />
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <Clock3 size={13} /> ~3 min wait line
+                    </span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <Sparkles size={13} /> Fast turnstile clearance
+                    </span>
+                  </div>
+                </article>
+              </div>
+
+            </div>
+
+            {/* Menu Feature for Current Meal */}
+            <section 
+              style={{
+                background: "var(--paper)",
+                border: "1px solid var(--line)",
+                borderRadius: 16,
+                padding: 24,
+                marginBottom: 28
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <div>
+                  <Eyebrow>Chef's Service</Eyebrow>
+                  <h3 style={{ fontSize: 20, marginTop: 2 }}>Today's {selectedSlot} Menu</h3>
                 </div>
                 <button
-                  className="text-button"
                   onClick={() => setSection("menu")}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#0284c7",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4
+                  }}
                 >
-                  Full weekly schedule <ArrowLeft size={16} className="arrow-forward" />
+                  View full week menu →
                 </button>
               </div>
-              <div className="menu-feature">
-                <div className="menu-visual">
-                  <ChefHat size={34} />
-                  <span>05</span>
-                  <small>crafted items</small>
-                </div>
-                <div className="menu-list">
-                  {menuDays[0].meals.Lunch.items.map((item, index) => (
-                    <div key={item}>
-                      <span>0{index + 1}</span>
-                      <strong>{item}</strong>
-                    </div>
-                  ))}
-                </div>
-                <div className="dietary-note">
-                  <StatusChip tone="good">Pure Vegetarian</StatusChip>
-                  <p>Prepared in accordance with institutional dietary guidelines.</p>
-                </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                {currentMenu.items.map((item, idx) => (
+                  <div 
+                    key={item}
+                    style={{
+                      background: "rgba(0,0,0,0.02)",
+                      border: "1px solid var(--line)",
+                      borderRadius: 10,
+                      padding: "12px 14px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10
+                    }}
+                  >
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>0{idx + 1}</span>
+                    <strong style={{ fontSize: 13 }}>{item}</strong>
+                  </div>
+                ))}
               </div>
             </section>
 
-            {/* Meal Feedback & Rating Section */}
-            <section className="feedback-section">
-              <div className="section-heading" style={{ marginBottom: 12 }}>
+            {/* Student Feedback Section */}
+            <section 
+              style={{
+                background: "var(--paper)",
+                border: "1px solid var(--line)",
+                borderRadius: 16,
+                padding: 24
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <div>
-                  <Eyebrow>Quality Telemetry</Eyebrow>
-                  <h2 style={{ fontSize: 20 }}>Rate today's meal</h2>
+                  <Eyebrow>Quality Assurance</Eyebrow>
+                  <h3 style={{ fontSize: 18, marginTop: 2 }}>Rate Today's {selectedSlot}</h3>
                 </div>
                 {feedbackSubmitted && (
-                  <StatusChip tone="good">Feedback recorded</StatusChip>
+                  <StatusChip tone="good">Feedback Logged</StatusChip>
                 )}
               </div>
-              <p style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 12px" }}>
-                Student reviews directly inform procurement quantities and chef preparation adjustments.
-              </p>
 
               <form onSubmit={handleFeedbackSubmit}>
-                <div className="star-rating">
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                   {[1, 2, 3, 4, 5].map((s) => (
                     <button
                       key={s}
                       type="button"
-                      className={`star-btn ${s <= rating ? "is-filled" : ""}`}
                       onClick={() => setRating(s)}
-                      aria-label={`Rate ${s} stars`}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        cursor: "pointer",
+                        color: s <= rating ? "#f59e0b" : "#cbd5e1",
+                        padding: 2
+                      }}
                     >
                       <Star size={24} fill={s <= rating ? "currentColor" : "none"} />
                     </button>
                   ))}
-                  <span style={{ fontSize: 12, marginLeft: 8, alignSelf: "center", fontWeight: 600 }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, marginLeft: 8 }}>
                     {rating === 5 ? "Exceptional" : rating === 4 ? "Very Good" : rating === 3 ? "Satisfactory" : "Needs Improvement"}
                   </span>
                 </div>
 
-                <div className="feedback-input-row">
+                <div style={{ display: "flex", gap: 10 }}>
                   <input
                     type="text"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="Share feedback on preparation, portion, temperature, or service..."
+                    placeholder="Share feedback on taste, preparation, portion, or hygiene..."
+                    style={{
+                      flex: 1,
+                      padding: "10px 14px",
+                      borderRadius: 8,
+                      border: "1px solid var(--line)",
+                      fontSize: 13,
+                      outline: "none"
+                    }}
                   />
-                  <Button type="submit" icon={<Send size={16} />}>
-                    Submit
+                  <Button type="submit" icon={<Send size={15} />}>
+                    Submit Review
                   </Button>
                 </div>
               </form>
-
-              <div className="feedback-stream">
-                <span style={{ fontSize: 10, textTransform: "uppercase", letterSpacing: "0.08em", color: "var(--muted)" }}>
-                  Recent Student Feedback
-                </span>
-                {feedbacks.slice(0, 3).map((f) => (
-                  <div key={f.id} className="feedback-stream-item">
-                    <div>
-                      <strong>{f.comment}</strong>
-                      <div style={{ fontSize: 9, color: "var(--muted)", marginTop: 2 }}>
-                        {f.name} · {f.meal} · {f.timeAgo}
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 2, color: "#c99c37" }}>
-                      {[...Array(f.rating)].map((_, i) => (
-                        <Star key={i} size={12} fill="currentColor" />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
             </section>
           </>
-        ) : (
-          <section className="menu-page">
-            <div className="student-intro">
-              <div>
-                <Eyebrow>{hostel} dining roster</Eyebrow>
-                <h1>Weekly menu</h1>
-                <p>Complete weekly meal schedule, dietary categorizations, and allergens.</p>
-              </div>
+        )}
+
+        {/* SECTION: WEEKLY MENU */}
+        {section === "menu" && (
+          <section style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 16, padding: 24 }}>
+            <div style={{ marginBottom: 20 }}>
+              <Eyebrow>{hostel} Weekly Dining</Eyebrow>
+              <h2 style={{ fontSize: 24, marginTop: 4 }}>Weekly Chef Schedule</h2>
+              <p style={{ fontSize: 13, color: "var(--muted)" }}>
+                Nutritionally balanced menus prepared daily per IIIT Allahabad mess committee.
+              </p>
             </div>
-            <div className="day-tabs">
-              {menuDays.map((day, index) => (
+
+            <div style={{ display: "flex", gap: 8, marginBottom: 20, overflowX: "auto", paddingBottom: 6 }}>
+              {menuDays.map((day, idx) => (
                 <button
                   key={day.date}
-                  className={dayIndex === index ? "is-active" : ""}
-                  onClick={() => setDayIndex(index)}
+                  onClick={() => setDayIndex(idx)}
+                  style={{
+                    padding: "8px 16px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: dayIndex === idx ? "#0f172a" : "rgba(0,0,0,0.05)",
+                    color: dayIndex === idx ? "#ffffff" : "var(--ink)",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: "pointer",
+                    textAlign: "left"
+                  }}
                 >
-                  <strong>{day.day}</strong>
-                  <span>{day.date}</span>
+                  <div style={{ fontSize: 13 }}>{day.day}</div>
+                  <div style={{ fontSize: 10, opacity: 0.7 }}>{day.date}</div>
                 </button>
               ))}
             </div>
+
             <SegmentedControl
               items={mealPeriods}
-              value={period}
-              onChange={setPeriod}
+              value={selectedSlot}
+              onChange={setSelectedSlot}
             />
-            <article className="menu-detail-card">
-              <div className="menu-detail-head">
-                <div>
-                  <Eyebrow>
-                    {menuDays[dayIndex].day} · {currentMenu.time}
-                  </Eyebrow>
-                  <h2>{period}</h2>
-                </div>
-                <Utensils size={26} />
-              </div>
-              <div className="dish-grid">
-                {currentMenu.items.map((item, index) => (
-                  <div className="dish-item" key={item}>
-                    <span>0{index + 1}</span>
-                    <strong>{item}</strong>
+
+            <div style={{ marginTop: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+                {currentMenu.items.map((item, idx) => (
+                  <div 
+                    key={item}
+                    style={{
+                      background: "rgba(0,0,0,0.02)",
+                      border: "1px solid var(--line)",
+                      borderRadius: 10,
+                      padding: 14
+                    }}
+                  >
+                    <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ITEM 0{idx + 1}</span>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>{item}</div>
                   </div>
                 ))}
               </div>
-              <div className="menu-detail-foot">
-                <div>
-                  {currentMenu.tags.map((tag) => (
-                    <StatusChip key={tag} tone="good">
-                      {tag}
-                    </StatusChip>
-                  ))}
-                </div>
-                <p>
-                  {currentMenu.allergen
-                    ? `Allergens: ${currentMenu.allergen}`
-                    : "No major allergens declared"}
+
+              <div style={{ marginTop: 20, display: "flex", gap: 8, alignItems: "center" }}>
+                {currentMenu.tags?.map((t) => (
+                  <StatusChip key={t} tone="good">{t}</StatusChip>
+                ))}
+                {currentMenu.allergen && (
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>Allergens: {currentMenu.allergen}</span>
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* SECTION: ATTENDANCE HISTORY */}
+        {section === "history" && (
+          <section style={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 16, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <Eyebrow>Institutional Attendance Records</Eyebrow>
+                <h2 style={{ fontSize: 24, marginTop: 4 }}>Meal Attendance Log</h2>
+                <p style={{ fontSize: 13, color: "var(--muted)" }}>
+                  Verified entries recorded when the vendor scanned your QR code at the turnstile.
                 </p>
               </div>
-            </article>
+
+              <button
+                onClick={loadAttendanceHistory}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "6px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  background: "none",
+                  fontSize: 12,
+                  cursor: "pointer"
+                }}
+              >
+                <RefreshCw size={13} className={historyLoading ? "spin" : ""} />
+                <span>Refresh Logs</span>
+              </button>
+            </div>
+
+            {historyRecords.length === 0 ? (
+              <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+                <Clock3 size={32} style={{ margin: "0 auto 10px", opacity: 0.5 }} />
+                <p>No turnstile scans recorded yet for {activeStudent.roll}. Generate your QR code and have the vendor scan it at entry!</p>
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid var(--line)", color: "var(--muted)", fontSize: 11, textTransform: "uppercase" }}>
+                      <th style={{ padding: 10 }}>Date</th>
+                      <th style={{ padding: 10 }}>Meal Slot</th>
+                      <th style={{ padding: 10 }}>Scan Time</th>
+                      <th style={{ padding: 10 }}>Dining Hostel</th>
+                      <th style={{ padding: 10 }}>Turnstile Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyRecords.map((r) => (
+                      <tr key={r.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                        <td style={{ padding: 12, fontWeight: 500 }}>{r.date}</td>
+                        <td style={{ padding: 12, fontWeight: 600 }}>{r.slot}</td>
+                        <td style={{ padding: 12, color: "var(--muted)" }}>{r.timestamp}</td>
+                        <td style={{ padding: 12 }}>{r.hostel}</td>
+                        <td style={{ padding: 12 }}>
+                          <span 
+                            style={{
+                              background: r.status === "APPROVED" ? "#dcfce7" : "#fee2e2",
+                              color: r.status === "APPROVED" ? "#166534" : "#991b1b",
+                              padding: "4px 8px",
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 600
+                            }}
+                          >
+                            {r.status === "APPROVED" ? "Verified Entered" : r.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </section>
         )}
       </main>
 
-      <nav className="student-nav" aria-label="Student navigation">
-        <button
-          className={section === "today" ? "is-active" : ""}
-          onClick={() => setSection("today")}
-        >
-          <Users size={19} />
-          <span>Today</span>
-        </button>
-        <button
-          className={section === "menu" ? "is-active" : ""}
-          onClick={() => setSection("menu")}
-        >
-          <CalendarDays size={19} />
-          <span>Menu</span>
-        </button>
-      </nav>
+      {/* College Identity Card Preview Modal */}
+      {showIdCardModal && (
+        <Modal title="College Identity Card" onClose={() => setShowIdCardModal(false)}>
+          <div style={{ textAlign: "center", padding: "10px 0" }}>
+            <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
+              Official IIIT Allahabad student credential uploaded during registration.
+            </p>
 
-      {scannerOpen && (
-        <ScanModal
-          session={session}
-          onScan={onScan}
-          onClose={() => setScannerOpen(false)}
-        />
+            <div 
+              style={{
+                maxWidth: 340,
+                margin: "0 auto",
+                borderRadius: 12,
+                overflow: "hidden",
+                border: "2px solid rgba(0,0,0,0.1)",
+                boxShadow: "0 10px 25px rgba(0,0,0,0.15)"
+              }}
+            >
+              {activeStudent.id_card_data ? (
+                <img 
+                  src={activeStudent.id_card_data} 
+                  alt="Student ID Card" 
+                  style={{ width: "100%", height: "auto", display: "block" }} 
+                />
+              ) : (
+                <div style={{ background: "#0f172a", color: "#ffffff", padding: 24 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#38bdf8" }}>IIIT ALLAHABAD</div>
+                  <div style={{ fontSize: 11, color: "#94a3b8", marginTop: 2 }}>STUDENT IDENTITY CARD</div>
+                  <div style={{ marginTop: 20, fontSize: 16, fontWeight: 700 }}>{activeStudent.name}</div>
+                  <div style={{ fontSize: 13, color: "#38bdf8", fontFamily: "monospace" }}>{activeStudent.roll}</div>
+                  <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 4 }}>Hostel: {activeStudent.hostel}</div>
+                  <div style={{ marginTop: 14, fontSize: 10, color: "#4ade80", fontWeight: 700 }}>VERIFIED MESS RESIDENT</div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: 16, fontSize: 12, color: "var(--muted)" }}>
+              Status: <strong style={{ color: activeStudent.is_allowed ? "#16a34a" : "#dc2626" }}>
+                {activeStudent.is_allowed ? "Allowed for Mess Access" : "Barred / Payment Hold"}
+              </strong>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <Button onClick={() => setShowIdCardModal(false)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   )

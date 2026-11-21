@@ -21,6 +21,7 @@ env/
 
 # Logs and OS files
 *.log
+*.db
 .DS_Store
 Thumbs.db
 .vscode/

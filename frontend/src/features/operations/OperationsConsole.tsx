@@ -15,6 +15,7 @@ import {
   Flame,
   GraduationCap,
   LayoutDashboard,
+  LogOut,
   Maximize2,
   Menu,
   PackageCheck,
@@ -25,6 +26,7 @@ import {
   Sigma,
   Sparkles,
   Trash2,
+  UserCheck,
   Users,
   Utensils,
   X,
@@ -44,6 +46,7 @@ import type {
   MealSession,
   ResearchPlot,
   StaffingItem,
+  VendorUser,
 } from "../../types"
 import {
   Brand,
@@ -54,9 +57,14 @@ import {
   StatusChip,
 } from "../../components/UI"
 import { QRCode } from "../../components/QRCode"
+import { WeatherWidget } from "../../components/WeatherWidget"
+import TurnstileScanner from "./TurnstileScanner"
+import AllowedStudents from "./AllowedStudents"
 
 type Section =
   | "overview"
+  | "scanner"
+  | "students"
   | "forecast"
   | "procurement"
   | "staffing"
@@ -64,11 +72,13 @@ type Section =
   | "research"
 
 type OperationsProps = {
+  vendorUser?: VendorUser
   session: MealSession | null
   claims: MealClaim[]
   onGenerateSession: () => void
   onEndSession: () => void
   onSwitch: () => void
+  onLogout?: () => void
 }
 
 const navItems: {
@@ -77,6 +87,8 @@ const navItems: {
   icon: typeof LayoutDashboard
 }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
+  { id: "scanner", label: "Turnstile QR Scanner", icon: QrCode },
+  { id: "students", label: "Allowed Students", icon: UserCheck },
   { id: "forecast", label: "Forecast & Simulator", icon: BarChart3 },
   { id: "procurement", label: "Procurement", icon: ShoppingBasket },
   { id: "staffing", label: "Staffing & service", icon: Users },
@@ -232,11 +244,13 @@ function Overview({
   claimCount,
   onGenerate,
   onViewSession,
+  onOpenScanner,
 }: {
   session: MealSession | null
   claimCount: number
   onGenerate: () => void
   onViewSession: () => void
+  onOpenScanner?: () => void
 }) {
   const checkIns = baselineCheckIns + claimCount
   const sessionActive =
@@ -250,13 +264,30 @@ function Overview({
           <h1>Lunch service overview</h1>
           <p>Real-time demand tracking, turnstile telemetry, and active operational alerts.</p>
         </div>
-        <div className="period-select">
-          <CalendarDays size={17} />
-          <span>Thu, 12 June</span>
-          <span className="period-divider" />
-          <strong>Lunch (BH-2 / BH-3)</strong>
-          <ChevronDown size={16} />
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          {onOpenScanner && (
+            <Button
+              variant="primary"
+              icon={<QrCode size={16} />}
+              onClick={onOpenScanner}
+              style={{ padding: "8px 14px", fontSize: 13 }}
+            >
+              Turnstile Scanner
+            </Button>
+          )}
+          <div className="period-select">
+            <CalendarDays size={17} />
+            <span>Thu, 12 June</span>
+            <span className="period-divider" />
+            <strong>Lunch (BH-2 / BH-3)</strong>
+            <ChevronDown size={16} />
+          </div>
         </div>
+      </div>
+
+      {/* Prominent Live Weather for Prayagraj, UP */}
+      <div style={{ marginBottom: 20 }}>
+        <WeatherWidget variant="card" />
       </div>
 
       <section className="metric-grid">
@@ -340,9 +371,16 @@ function Overview({
                   Anti-duplicate <Check size={15} />
                 </span>
               </div>
-              <Button variant="secondary" onClick={onViewSession}>
-                View counter display
-              </Button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <Button variant="secondary" onClick={onViewSession}>
+                  Counter display
+                </Button>
+                {onOpenScanner && (
+                  <Button variant="primary" icon={<QrCode size={16} />} onClick={onOpenScanner}>
+                    Turnstile Scanner
+                  </Button>
+                )}
+              </div>
             </>
           ) : (
             <>
@@ -1140,11 +1178,13 @@ function Research() {
 }
 
 export default function OperationsConsole({
+  vendorUser,
   session,
   claims,
   onGenerateSession,
   onEndSession,
   onSwitch,
+  onLogout,
 }: OperationsProps) {
   const [section, setSection] = useState<Section>("overview")
   const [mobileNav, setMobileNav] = useState(false)
@@ -1157,7 +1197,15 @@ export default function OperationsConsole({
     [claims, session],
   )
 
+  const activeVendor: VendorUser = vendorUser || {
+    vendor_id: "vendor",
+    name: "Central Mess Supervisor",
+    hostel: "BH-2",
+  }
+
   const renderSection = () => {
+    if (section === "scanner") return <TurnstileScanner />
+    if (section === "students") return <AllowedStudents />
     if (section === "forecast") return <Forecast />
     if (section === "procurement") return <Procurement />
     if (section === "staffing") return <Staffing />
@@ -1172,6 +1220,7 @@ export default function OperationsConsole({
           setTimeout(() => setSessionModal(true), 0)
         }}
         onViewSession={() => setSessionModal(true)}
+        onOpenScanner={() => setSection("scanner")}
       />
     )
   }
@@ -1199,34 +1248,91 @@ export default function OperationsConsole({
               >
                 <Icon size={19} />
                 <span>{item.label}</span>
-                {item.id === "overview" && <i />}
+                {item.id === "scanner" && <i style={{ background: "#22c55e" }} />}
               </button>
             )
           })}
         </nav>
-        <div className="sidebar-status">
-          <div>
+        <div className="sidebar-status" style={{ padding: "12px 14px" }}>
+          <div style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
             <span className="pulse-dot" />
-            <strong>System healthy</strong>
+            <strong style={{ fontSize: 11 }}>Turnstile Telemetry Live</strong>
           </div>
-          <p>Telemetry & ML engine online</p>
+          <WeatherWidget variant="compact" />
         </div>
-        <button className="operator-profile" onClick={onSwitch}>
-          <span>VK</span>
-          <div>
-            <strong>Varun Karankar</strong>
-            <small>Operations Lead · Switch</small>
+        <div 
+          className="operator-profile" 
+          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "default" }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ background: "#38bdf8", color: "#0f172a" }}>
+              {activeVendor.name.slice(0, 2).toUpperCase()}
+            </span>
+            <div>
+              <strong>{activeVendor.name}</strong>
+              <small>{activeVendor.hostel} · Catering Vendor</small>
+            </div>
           </div>
-          <Settings2 size={17} />
-        </button>
+          <button
+            onClick={onLogout || onSwitch}
+            style={{
+              background: "none",
+              border: "none",
+              color: "inherit",
+              cursor: "pointer",
+              padding: 4,
+              opacity: 0.7
+            }}
+            title="Sign Out of Vendor Console"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
       </aside>
       <div className="ops-content-shell">
-        <header className="ops-mobile-header">
-          <button onClick={() => setMobileNav(true)}>
-            <Menu size={21} />
-          </button>
-          <Brand compact />
-          <span>Operations Console</span>
+        <header 
+          className="ops-header-bar"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "14px 24px",
+            borderBottom: "1px solid var(--line)",
+            background: "rgba(15, 23, 42, 0.95)",
+            backdropFilter: "blur(12px)",
+            position: "sticky",
+            top: 0,
+            zIndex: 30,
+            color: "#ffffff",
+            flexWrap: "wrap",
+            gap: 12
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button className="mobile-menu-btn" onClick={() => setMobileNav(true)}>
+              <Menu size={21} />
+            </button>
+            <Brand compact />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>
+              Dining Operations · {activeVendor.hostel}
+            </span>
+          </div>
+
+          {/* Live Weather Widget for Prayagraj, UP */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <WeatherWidget variant="header" />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>
+              <span>{activeVendor.name}</span>
+              <button
+                onClick={onLogout || onSwitch}
+                className="button button-ghost"
+                style={{ fontSize: 11, padding: "4px 8px", display: "flex", alignItems: "center", gap: 4, color: "#ffffff", borderColor: "rgba(255,255,255,0.2)" }}
+              >
+                <LogOut size={12} />
+                <span>Sign out</span>
+              </button>
+            </div>
+          </div>
         </header>
         <main className="ops-main">{renderSection()}</main>
       </div>
