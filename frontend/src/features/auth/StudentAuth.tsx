@@ -78,7 +78,7 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
       const res = await loginStudent(loginRoll, loginPassword)
       onLoginSuccess(res.student)
     } catch (err: any) {
-      setLoginError(err.message || "Invalid Roll Number or Password")
+      setLoginError(err?.message || "Invalid Roll Number or Password")
     } finally {
       setLoginLoading(false)
     }

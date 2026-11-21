@@ -24,7 +24,7 @@ export default function VendorAuth({ onLoginSuccess, onBack }: VendorAuthProps) 
       const res = await loginVendor(vendorId, password)
       onLoginSuccess(res.vendor)
     } catch (err: any) {
-      setError(err.message || "Invalid Vendor ID or Password")
+      setError(err?.message || "Invalid Vendor ID or Password")
     } finally {
       setLoading(false)
     }
