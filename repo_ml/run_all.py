@@ -137,8 +137,13 @@ def phase5():
 def run_tests():
     banner("UNIT TESTS")
     import subprocess
+    try:
+        import pytest
+        cmd = [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"]
+    except ImportError:
+        cmd = [sys.executable, "tests/test_generator.py"]
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "-v", "--tb=short"],
+        cmd,
         cwd=str(ROOT),
         capture_output=False,
     )

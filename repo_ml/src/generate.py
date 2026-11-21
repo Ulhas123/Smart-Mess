@@ -166,24 +166,39 @@ def is_rainy(precip: float, threshold_mm: float = 3.0) -> int:
 # 3.  Festival intensity kernel
 # ─────────────────────────────────────────────────────────────
 
-def build_festival_kernel(cfg: dict, date_index: pd.DatetimeIndex) -> np.ndarray:
+def build_festival_kernel(cfg: dict, date_index: pd.DatetimeIndex, cal_df: pd.DataFrame = None) -> np.ndarray:
     """
     E_t = clamp( sum_k a_k * exp(-|t - tau_k| / b_k), 0, 0.90 )
     Returns array of fractional reduction (0 = no reduction).
+    Dynamically aligns festival center dates with the calendar holidays.
     """
     events_cfg = cfg["festival_kernel"]["events"]
     kernel = np.zeros(len(date_index))
 
+    # Dynamic calendar holiday date extraction
+    calendar_holidays = {}
+    if cal_df is not None and "holiday_name" in cal_df.columns:
+        c_hols = cal_df[cal_df["is_holiday"] == 1]
+        for _, row in c_hols.iterrows():
+            h_name = str(row["holiday_name"]).lower()
+            h_date = pd.Timestamp(row["date"])
+            for evt in events_cfg.keys():
+                if evt.lower() in h_name:
+                    calendar_holidays.setdefault(evt, []).append(h_date)
+
     for year in [2025, 2026]:
         for name, (doy, amp, hl) in events_cfg.items():
-            # Convert day-of-year to actual date for each year
-            tau = pd.Timestamp(f"{year}-01-01") + pd.Timedelta(days=int(doy) - 1)
-            if tau not in date_index:
-                # find closest in index
-                pass
-            for i, d in enumerate(date_index):
-                dist = abs((d - tau).days)
-                kernel[i] += amp * math.exp(-dist / hl)
+            # If calendar holiday matches, use exact calendar holiday date
+            matched_dates = [d for d in calendar_holidays.get(name, []) if d.year == year]
+            if matched_dates:
+                tau_list = matched_dates
+            else:
+                tau_list = [pd.Timestamp(f"{year}-01-01") + pd.Timedelta(days=int(doy) - 1)]
+
+            for tau in tau_list:
+                for i, d in enumerate(date_index):
+                    dist = abs((d - tau).days)
+                    kernel[i] += amp * math.exp(-dist / hl)
 
     kernel = np.clip(kernel, 0, 0.90)
     return kernel
@@ -337,8 +352,8 @@ def generate(seed: int = None, cfg_override: dict = None):
     # Merge
     cal = cal.merge(weather_df, on="date", how="left")
 
-    # Build festival kernel
-    festival_kernel = build_festival_kernel(cfg, pd.DatetimeIndex(cal["date"]))
+    # Build festival kernel with dynamic calendar holiday alignment
+    festival_kernel = build_festival_kernel(cfg, pd.DatetimeIndex(cal["date"]), cal_df=cal)
 
     # Menu lookup: weekday → slot → row
     menu_lkp = {}

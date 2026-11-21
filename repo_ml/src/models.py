@@ -159,8 +159,8 @@ def holtwinters_predict(train_series: pd.Series,
                         n_periods: int,
                         seasonal_periods: int = 7):
     """Holt-Winters per (hostel, slot) series."""
-    from statsmodels.tsa.holtwinters import ExponentialSmoothing
     try:
+        from statsmodels.tsa.holtwinters import ExponentialSmoothing
         model = ExponentialSmoothing(
             train_series,
             trend="add",
@@ -170,7 +170,7 @@ def holtwinters_predict(train_series: pd.Series,
         ).fit(optimized=True)
         return model.forecast(n_periods)
     except Exception as e:
-        print(f"  [HW] failed: {e}, using mean")
+        print(f"  [HW] fallback ({type(e).__name__}: {e}), using mean")
         return pd.Series([train_series.mean()] * n_periods)
 
 
@@ -179,8 +179,8 @@ def sarima_predict(train_series: pd.Series,
                    order=(1, 1, 1),
                    seasonal_order=(1, 0, 1, 7)):
     """SARIMA per series."""
-    from statsmodels.tsa.statespace.sarimax import SARIMAX
     try:
+        from statsmodels.tsa.statespace.sarimax import SARIMAX
         model = SARIMAX(
             train_series,
             order=order,
@@ -191,7 +191,7 @@ def sarima_predict(train_series: pd.Series,
         forecast = model.get_forecast(steps=n_periods)
         return forecast.predicted_mean
     except Exception as e:
-        print(f"  [SARIMA] failed: {e}, using mean")
+        print(f"  [SARIMA] fallback ({type(e).__name__}: {e}), using mean")
         return pd.Series([train_series.mean()] * n_periods)
 
 

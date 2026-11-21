@@ -1,9 +1,9 @@
 // API Client with automatic fallback to client-side math engine
-const API_BASE = "http://127.0.0.1:8000/api";
+const API_BASE = (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL) || "/api";
 
 export async function fetchHealth() {
   try {
-    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(6000) });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("Backend API offline, using local client mode", e);
@@ -28,7 +28,7 @@ export async function fetchForecast(params) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(8000)
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -128,7 +128,7 @@ export async function fetchProcurement(headcount, slot = "dinner", hostel = "BH-
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ headcount, slot, hostel }),
-      signal: AbortSignal.timeout(3000)
+      signal: AbortSignal.timeout(8000)
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -148,17 +148,6 @@ export async function fetchProcurement(headcount, slot = "dinner", hostel = "BH-
   let spices_kg = isBreakfast ? Number((heads * 0.01).toFixed(2)) : Number((heads * 0.02).toFixed(2));
   let nonveg_kg = isBH3 ? (isBreakfast ? Number((heads * 0.08).toFixed(2)) : Number((heads * 0.14).toFixed(2))) : 0;
 
-  const totalCost = (
-    rice_kg * 45 +
-    atta_kg * 35 +
-    dal_kg * 120 +
-    veg_kg * 35 +
-    dairy_kg * (isBH3 ? 180 : 280) +
-    oil_l * 130 +
-    spices_kg * 200 +
-    nonveg_kg * 190
-  );
-
   const items = [
     { name: "Rice (Basmati / Medium Grain)", amount: `${rice_kg} kg`, unit_price: "₹45/kg", cost: Math.round(rice_kg * 45) },
     { name: "Whole Wheat Atta", amount: `${atta_kg} kg`, unit_price: "₹35/kg", cost: Math.round(atta_kg * 35) },
@@ -171,6 +160,8 @@ export async function fetchProcurement(headcount, slot = "dinner", hostel = "BH-
   if (isBH3 && nonveg_kg > 0) {
     items.push({ name: "Fresh Poultry / Eggs (BH-3 Special)", amount: `${nonveg_kg} kg`, unit_price: "₹190/kg", cost: Math.round(nonveg_kg * 190) });
   }
+
+  const totalCost = items.reduce((sum, item) => sum + item.cost, 0);
 
   return {
     headcount: heads,
@@ -188,7 +179,7 @@ export async function fetchProcurement(headcount, slot = "dinner", hostel = "BH-
 
 export async function fetchBenchmarks() {
   try {
-    const res = await fetch(`${API_BASE}/benchmarks`, { signal: AbortSignal.timeout(2000) });
+    const res = await fetch(`${API_BASE}/benchmarks`, { signal: AbortSignal.timeout(6000) });
     if (res.ok) return await res.json();
   } catch (e) {
     console.warn("Using bundled benchmark data", e);
@@ -250,7 +241,6 @@ export async function fetchBenchmarks() {
   };
 }
 
-export async function submitSwipe(roll, hostel = "BH-2", slot = "dinner", name = "") {
 export async function submitSwipe(param1, hostel = "BH-2", slot = "lunch", name = "") {
   let roll = "IEC2023059";
   let h = hostel;
@@ -272,9 +262,8 @@ export async function submitSwipe(param1, hostel = "BH-2", slot = "lunch", name 
     const res = await fetch(`${API_BASE}/telemetry/swipe`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roll, hostel, slot, name }),
-      body: JSON.stringify({ roll: rollUpper, hostel: h, slot: s, name: n }),
-      signal: AbortSignal.timeout(2000)
+      body: JSON.stringify({ roll: rollUpper, hostel: h, slot: s, name: n || `Student ${rollUpper}` }),
+      signal: AbortSignal.timeout(6000)
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -284,14 +273,9 @@ export async function submitSwipe(param1, hostel = "BH-2", slot = "lunch", name 
   const timeStr = new Date().toLocaleTimeString();
   return {
     status: "success",
-    message: `Verified check-in for ${roll.toUpperCase()} at ${hostel} (${slot})`,
     message: `Verified check-in for ${rollUpper} at ${h} (${s})`,
     scan: {
       id: Date.now(),
-      roll: roll.toUpperCase(),
-      name: name || `Student ${roll.toUpperCase()}`,
-      hostel,
-      slot,
       roll: rollUpper,
       name: n || `Student ${rollUpper}`,
       hostel: h,
@@ -301,7 +285,6 @@ export async function submitSwipe(param1, hostel = "BH-2", slot = "lunch", name 
   };
 }
 
-export async function submitFeedback(roll, rating, comment, meal = "Dinner") {
 export async function submitFeedback(param1, rating = 5, comment = "", meal = "Lunch") {
   let roll = "IEC2023059";
   let r = rating;
@@ -323,9 +306,8 @@ export async function submitFeedback(param1, rating = 5, comment = "", meal = "L
     const res = await fetch(`${API_BASE}/telemetry/feedback`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roll, rating, comment, meal }),
       body: JSON.stringify({ roll: rollUpper, rating: r, comment: c, meal: m }),
-      signal: AbortSignal.timeout(2000)
+      signal: AbortSignal.timeout(6000)
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -336,10 +318,6 @@ export async function submitFeedback(param1, rating = 5, comment = "", meal = "L
     status: "success",
     entry: {
       id: Date.now(),
-      roll: roll.toUpperCase(),
-      rating,
-      comment,
-      meal,
       roll: rollUpper,
       rating: r,
       comment: c,
@@ -347,4 +325,28 @@ export async function submitFeedback(param1, rating = 5, comment = "", meal = "L
       date: "Just now"
     }
   };
+}
+
+export async function fetchCalendar() {
+  try {
+    const res = await fetch(`${API_BASE}/calendar`, { signal: AbortSignal.timeout(6000) });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("Using local calendar fallback", e);
+  }
+  return {
+    total_days: 730,
+    regimes: ["Normal", "Mid-Sem Exam", "End-Sem Exam", "Mid-Break", "End-Break", "Summer", "Pre-Semester", "Holiday"],
+    sample: []
+  };
+}
+
+export async function fetchMenu() {
+  try {
+    const res = await fetch(`${API_BASE}/menu`, { signal: AbortSignal.timeout(6000) });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn("Using local menu fallback", e);
+  }
+  return null;
 }

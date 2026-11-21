@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { fetchForecast, fetchProcurement } from "../../services/api"
 import {
   AlertTriangle,
   ArrowDownRight,
@@ -93,17 +94,14 @@ function formatTime(timestamp: number) {
 function DemandChart({ adjustment = 0 }: { adjustment?: number }) {
   const width = 620
   const height = 190
-  const max = 280
   const max = 340
   const path = (key: "forecast" | "actual") =>
     demandPoints
       .map((point, index) => {
-        const value =
         const rawValue =
           key === "forecast" ? point[key] * (1 + adjustment / 100) : point[key]
         const value = Math.max(0, rawValue)
         const x = (index / (demandPoints.length - 1)) * width
-        const y = height - (value / max) * height
         const y = Math.max(12, Math.min(height - 12, height - (value / max) * (height - 24) - 12))
         return `${index === 0 ? "M" : "L"} ${x} ${y}`
       })
@@ -438,14 +436,39 @@ function Forecast() {
   const [adjustment, setAdjustment] = useState(0)
   const [event, setEvent] = useState(false)
   const [activePreset, setActivePreset] = useState("normal")
+  const [liveQuantiles, setLiveQuantiles] = useState<{ q10: number; q50: number; q90: number } | null>(null)
 
   const effectiveAdjustment = adjustment + (event ? 8 : 0)
   const projected = Math.round(748 * (1 + effectiveAdjustment / 100))
 
-  // Quantile bounds derived from empirical ratios (q10=0.88, q50=1.0, q90=1.12)
-  const q10 = Math.round(projected * 0.88)
-  const q50 = projected
-  const q90 = Math.round(projected * 1.12)
+  useEffect(() => {
+    let active = true
+    const params = {
+      date: new Date().toISOString().split("T")[0],
+      hostel: "BH-2",
+      slot: "lunch",
+      academic_phase: activePreset === "exam" ? "Mid-Sem Exam" : "Normal",
+      is_rainy: activePreset === "rain",
+      festival_factor: activePreset === "diwali" ? 0.9 : 0.0,
+      is_special: event
+    }
+    fetchForecast(params).then((res) => {
+      if (active && res && res.q50) {
+        const scale = 748 / 300
+        setLiveQuantiles({
+          q10: Math.round(res.q10 * scale * (1 + adjustment / 100)),
+          q50: Math.round(res.q50 * scale * (1 + adjustment / 100)),
+          q90: Math.round(res.q90 * scale * (1 + adjustment / 100))
+        })
+      }
+    }).catch(() => {})
+    return () => { active = false }
+  }, [activePreset, adjustment, event])
+
+  // Quantile bounds derived from empirical ratios or live backend forecast
+  const q10 = liveQuantiles?.q10 ?? Math.round(projected * 0.88)
+  const q50 = liveQuantiles?.q50 ?? projected
+  const q90 = liveQuantiles?.q90 ?? Math.round(projected * 1.12)
 
   const applyPreset = (preset: string) => {
     setActivePreset(preset)

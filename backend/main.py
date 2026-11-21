@@ -9,6 +9,7 @@ from typing import Optional, Dict, Any, List
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 app = FastAPI(
@@ -17,17 +18,19 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# Enable CORS for frontend
+# Enable CORS for frontend (allows Vercel, localhost, and custom domains)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 REPO_ML_DIR = BASE_DIR / "repo_ml"
+if not REPO_ML_DIR.exists():
+    REPO_ML_DIR = Path.cwd() / "repo_ml"
 DATA_DIR = REPO_ML_DIR / "data"
 RESULTS_DIR = REPO_ML_DIR / "results"
 CONFIG_DIR = REPO_ML_DIR / "config"
@@ -128,7 +131,27 @@ def compute_headcount(req: ForecastRequest) -> Dict[str, Any]:
         "Pre-Semester": 0.25,
         "Holiday": 0.82,
     }
-    m_regime = regime_mults.get(req.academic_phase, 1.0)
+
+    academic_phase = req.academic_phase or "Normal"
+    days_to_exam = req.days_to_exam if req.days_to_exam is not None else 30
+    festival_factor = req.festival_factor if req.festival_factor is not None else 0.0
+
+    # Auto-lookup from calendar_df if date provided
+    if req.date and not calendar_df.empty and "date" in calendar_df.columns:
+        match = calendar_df[calendar_df["date"] == req.date]
+        if not match.empty:
+            row = match.iloc[0]
+            if req.academic_phase == "Normal" and "academic_phase" in row and pd.notnull(row["academic_phase"]):
+                cal_regime = str(row["academic_phase"]).replace("_", " ").title()
+                if cal_regime in regime_mults:
+                    academic_phase = cal_regime
+            if req.days_to_exam == 30 and "days_to_next_exam_start" in row and pd.notnull(row["days_to_next_exam_start"]):
+                try:
+                    days_to_exam = int(row["days_to_next_exam_start"])
+                except (ValueError, TypeError):
+                    pass
+
+    m_regime = regime_mults.get(academic_phase, 1.0)
 
     # Weather Multiplier
     m_weather = 1.0
@@ -154,11 +177,11 @@ def compute_headcount(req: ForecastRequest) -> Dict[str, Any]:
         m_menu += 0.07
 
     # Festival Decay Multiplier
-    m_festival = 1.0 - (0.75 * min(1.0, max(0.0, req.festival_factor)))
+    m_festival = 1.0 - (0.75 * min(1.0, max(0.0, festival_factor)))
 
     # Anticipatory Exam Effect
     m_anticipatory = 1.0
-    if 0 < req.days_to_exam <= 3:
+    if 0 < days_to_exam <= 3:
         m_anticipatory = 1.02
 
     # Expected headcount mu
@@ -168,11 +191,11 @@ def compute_headcount(req: ForecastRequest) -> Dict[str, Any]:
     # Heteroscedastic dispersion alpha
     # In exams and festival transitions, uncertainty (dispersion) increases
     alpha = 0.08
-    if req.academic_phase in ["Mid-Sem Exam", "End-Sem Exam"]:
+    if academic_phase in ["Mid-Sem Exam", "End-Sem Exam"]:
         alpha = 0.05  # More predictable attendance
-    elif req.academic_phase in ["Mid-Break", "End-Break", "Summer"]:
+    elif academic_phase in ["Mid-Break", "End-Break", "Summer"]:
         alpha = 0.18  # High relative dispersion during breaks
-    if req.festival_factor > 0.2:
+    if festival_factor > 0.2:
         alpha += 0.10
 
     # Variance = mu + alpha * mu^2
@@ -251,7 +274,8 @@ def health_check():
 def get_calendar():
     if calendar_df.empty:
         return {"dates": [], "regimes": ["Normal", "Mid-Sem Exam", "End-Sem Exam", "Mid-Break", "End-Break", "Summer"]}
-    records = calendar_df.head(100).to_dict(orient="records")
+    clean_df = calendar_df.fillna("")
+    records = clean_df.head(100).to_dict(orient="records")
     return {
         "total_days": len(calendar_df),
         "sample": records,
@@ -314,19 +338,6 @@ def procurement_calculator(req: ProcurementRequest):
         spices_kg = round(heads * 0.02, 2)
         nonveg_kg = round(heads * 0.14, 2) if is_bh3 else 0.0  # Chicken
 
-    # Estimated wholesale procurement cost (in INR)
-    # Rice ~ ₹45/kg, Atta ~ ₹35/kg, Dal ~ ₹120/kg, Veg ~ ₹35/kg, Dairy ~ ₹320/kg, Oil ~ ₹130/L, Nonveg ~ ₹180/kg
-    total_cost = (
-        rice_kg * 45 +
-        atta_kg * 35 +
-        dal_kg * 120 +
-        veg_kg * 35 +
-        dairy_kg * (280 if not is_bh3 else 180) +
-        oil_l * 130 +
-        spices_kg * 200 +
-        nonveg_kg * 190
-    )
-
     items = [
         {"name": "Rice (Basmati / Medium Grain)", "amount": f"{rice_kg} kg", "unit_price": "₹45/kg", "cost": round(rice_kg * 45)},
         {"name": "Whole Wheat Atta", "amount": f"{atta_kg} kg", "unit_price": "₹35/kg", "cost": round(atta_kg * 35)},
@@ -338,6 +349,8 @@ def procurement_calculator(req: ProcurementRequest):
     ]
     if is_bh3 and nonveg_kg > 0:
         items.append({"name": "Fresh Poultry / Eggs (BH-3 Special)", "amount": f"{nonveg_kg} kg", "unit_price": "₹190/kg", "cost": round(nonveg_kg * 190)})
+
+    total_cost = sum(item["cost"] for item in items)
 
     return {
         "headcount": heads,
@@ -450,6 +463,11 @@ def submit_feedback(req: FeedbackRequest):
     telemetry_state["feedback"].insert(0, entry)
     return {"status": "success", "entry": entry}
 
+# Mount static build files for seamless local single-port deployment
+DIST_DIR = BASE_DIR / "frontend" / "dist"
+if DIST_DIR.exists():
+    app.mount("/", StaticFiles(directory=str(DIST_DIR), html=True), name="static")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

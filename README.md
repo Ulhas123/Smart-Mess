@@ -104,32 +104,65 @@ MessApplication/
 
 ---
 
-## ⚡ Quick Start Guide
+## ⚡ Quick Start & Local Deployment
 
 ### 1. Prerequisites
 - **Python 3.10+**
 - **Node.js 18+** & npm
 
-### 2. Start the Backend API Server
-```bash
-python backend/server.py 8000
-```
-API runs on `http://127.0.0.1:8000`. Test endpoint: `http://127.0.0.1:8000/api/health`.
+---
 
-### 3. Start the Frontend Application
-```bash
+### 2. One-Click Local Launch (Unified Server)
+The easiest way to launch the full system locally. This compiles the frontend (if not yet built) and starts the unified FastAPI server hosting **both the REST API and the React SPA UI on a single port**:
+
+#### Windows PowerShell:
+```powershell
+.\start_local.ps1
+```
+
+#### Windows Batch (or Double-Click):
+```bat
+start_local.bat
+```
+
+- **Web Application & UI:** [http://127.0.0.1:8000](http://127.0.0.1:8000)
+- **Interactive Swagger API Docs:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+---
+
+### 3. Dual Development Mode (Hot Reloading)
+For active development with Vite Hot Module Replacement (HMR) and backend auto-reload:
+
+```powershell
+# Option A: One-command dev launcher
+.\start_local.ps1 -Dev
+
+# Option B: Manual two-terminal setup
+# Terminal 1 - Backend:
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+
+# Terminal 2 - Frontend:
 cd frontend
 npm install
 npm run dev
 ```
-Open **`http://localhost:5173/`** in your browser.
+- **Vite Development UI:** [http://localhost:5173](http://localhost:5173) (automatically reverse-proxies `/api` calls to port 8000)
 
-### 4. Build for Production
-```bash
+---
+
+### 4. Running Automated Verification Suites
+```powershell
+# Test all backend API endpoints and UI mounting:
+python -m backend.test_api
+
+# Run synthetic ML pipeline unit tests:
+python repo_ml/run_all.py --tests-only
+
+# Verify frontend build & linting:
 cd frontend
+npm run lint
 npm run build
 ```
-Creates an optimized static production bundle in `frontend/dist/`.
 
 ---
 

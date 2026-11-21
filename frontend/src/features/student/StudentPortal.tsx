@@ -181,7 +181,6 @@ export default function StudentPortal({
   const [feedbacks, setFeedbacks] = useState<FeedbackItem[]>(initialFeedbacks)
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
-  const currentMenu = menuDays[dayIndex].meals[period]
   const currentMenu =
     menuDays[dayIndex]?.meals?.[period] || menuDays[0].meals.Lunch
   const sessionActive =

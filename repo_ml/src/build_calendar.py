@@ -245,7 +245,7 @@ def build_calendar():
             "is_backpaper_exam", "is_c2_assessment"]].max(axis=1)
     )
     df["is_no_classes"] = (
-        df[["is_weekend", "is_holiday", "is_mid_break", "is_end_break",
+        df[["is_holiday", "is_mid_break", "is_end_break",
             "is_summer_sem", "is_pre_semester", "is_any_exam"]].max(axis=1)
     )
 

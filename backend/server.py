@@ -176,17 +176,6 @@ def compute_procurement(data: dict) -> dict:
         spices_kg = round(heads * 0.02, 2)
         nonveg_kg = round(heads * 0.14, 2) if is_bh3 else 0.0
 
-    total_cost = (
-        rice_kg * 45 +
-        atta_kg * 35 +
-        dal_kg * 120 +
-        veg_kg * 35 +
-        dairy_kg * (280 if not is_bh3 else 180) +
-        oil_l * 130 +
-        spices_kg * 200 +
-        nonveg_kg * 190
-    )
-
     items = [
         {"name": "Rice (Basmati / Medium Grain)", "amount": f"{rice_kg} kg", "unit_price": "₹45/kg", "cost": round(rice_kg * 45)},
         {"name": "Whole Wheat Atta", "amount": f"{atta_kg} kg", "unit_price": "₹35/kg", "cost": round(atta_kg * 35)},
@@ -198,6 +187,8 @@ def compute_procurement(data: dict) -> dict:
     ]
     if is_bh3 and nonveg_kg > 0:
         items.append({"name": "Fresh Poultry / Eggs (BH-3 Non-Veg)", "amount": f"{nonveg_kg} kg", "unit_price": "₹190/kg", "cost": round(nonveg_kg * 190)})
+
+    total_cost = sum(item["cost"] for item in items)
 
     return {
         "headcount": heads,

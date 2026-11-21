@@ -6,7 +6,10 @@ Run with:  python -m pytest tests/ -v
 """
 
 import sys
-import pytest
+try:
+    import pytest
+except ImportError:
+    pytest = None
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -227,4 +230,22 @@ def test_attendance_pct_consistency():
 
 
 if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
+    if pytest is not None:
+        pytest.main([__file__, "-v"])
+    else:
+        print("\n" + "="*50)
+        print("  Running test_generator.py via standalone runner")
+        print("="*50)
+        passed = 0
+        failed = 0
+        for name, func in list(globals().items()):
+            if name.startswith("test_") and callable(func):
+                try:
+                    func()
+                    print(f"  [PASS] {name}")
+                    passed += 1
+                except Exception as e:
+                    print(f"  [FAIL] {name}: {e}")
+                    failed += 1
+        print(f"\nTest Summary: {passed} passed, {failed} failed.")
+        sys.exit(0 if failed == 0 else 1)
