@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "smart-mess-frontend",
+  "name": "smart-mess",
   "compatibility_date": "2026-11-21",
   "assets": {
     "directory": "./dist",
