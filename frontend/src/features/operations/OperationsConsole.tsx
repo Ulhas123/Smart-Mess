@@ -19,9 +19,11 @@ import {
   Maximize2,
   Menu,
   PackageCheck,
-  QrCode,
+  Play,
   RefreshCcw,
+  ScanLine,
   Settings2,
+  ShieldCheck,
   ShoppingBasket,
   Sigma,
   Sparkles,
@@ -63,7 +65,6 @@ import {
   Modal,
   StatusChip,
 } from "../../components/UI"
-import { QRCode } from "../../components/QRCode"
 import { WeatherWidget } from "../../components/WeatherWidget"
 import PrayagrajClockBadge from "../../components/agency/PrayagrajClockBadge"
 import TurnstileScanner from "./TurnstileScanner"
@@ -95,7 +96,7 @@ const navItems: {
   icon: typeof LayoutDashboard
 }[] = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "scanner", label: "Turnstile QR Scanner", icon: QrCode },
+  { id: "scanner", label: "Turnstile Scanner", icon: ScanLine },
   { id: "students", label: "Allowed Students", icon: UserCheck },
   { id: "forecast", label: "Forecast & Simulator", icon: BarChart3 },
   { id: "procurement", label: "Procurement", icon: ShoppingBasket },
@@ -671,13 +672,18 @@ function SessionModal({
   const active = session.status === "active" && minutesRemaining > 0
 
   return (
-    <Modal title="Dining Counter QR Display" onClose={onClose} wide>
+    <Modal title="Dining Counter Session Monitor" onClose={onClose} wide>
       <div className="session-presentation">
-        <div className="session-qr-column">
-          <div className="qr-frame">
-            <QRCode />
+        <div className="session-gate-column" style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "28px 20px", background: "var(--card-bg, #f8fafc)", borderRadius: "16px", border: "1px solid var(--border-color, #e2e8f0)" }}>
+          <div style={{ width: 88, height: 88, borderRadius: "50%", background: active ? "#ecfdf5" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: active ? "#059669" : "#dc2626", marginBottom: 16 }}>
+            <ScanLine size={44} />
           </div>
-          <p>Display at the dining hall entrance turnstile</p>
+          <strong style={{ fontSize: 16, color: "var(--text-primary, #0f172a)" }}>
+            {active ? "Turnstiles Active" : "Gate Offline"}
+          </strong>
+          <p style={{ marginTop: 6, fontSize: 11, color: "var(--muted, #64748b)", textAlign: "center" }}>
+            {active ? "Accepting student NFC & token verification" : "Service window inactive"}
+          </p>
         </div>
         <div className="session-details">
           <StatusChip tone={active ? "good" : "danger"}>
@@ -686,7 +692,7 @@ function SessionModal({
           <h3>
             {active
               ? `${minutesRemaining} minutes remaining in window`
-              : "No longer accepting student scans"}
+              : "No longer accepting student check-ins"}
           </h3>
           <p>
             Valid today from {formatTime(session.startsAt)} to{" "}
@@ -762,7 +768,7 @@ function Overview({
           {onOpenScanner && (
             <Button
               variant="primary"
-              icon={<QrCode size={16} />}
+              icon={<ScanLine size={16} />}
               onClick={onOpenScanner}
               style={{ padding: "8px 14px", fontSize: 13 }}
             >
@@ -834,15 +840,15 @@ function Overview({
           <div className="card-heading">
             <div>
               <Eyebrow>Turnstile telemetry</Eyebrow>
-              <h2>Vendor QR session</h2>
+              <h2>Dining service session</h2>
             </div>
-            <QrCode size={24} />
+            <ScanLine size={24} />
           </div>
           {session ? (
             <>
               <div className="session-status-visual">
-                <div className="mini-qr">
-                  <QRCode light />
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: sessionActive ? "#ecfdf5" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", color: sessionActive ? "#059669" : "#dc2626", flexShrink: 0 }}>
+                  <ScanLine size={28} />
                 </div>
                 <div>
                   <StatusChip tone={sessionActive ? "good" : "danger"}>
@@ -867,10 +873,10 @@ function Overview({
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <Button variant="secondary" onClick={onViewSession}>
-                  Counter display
+                  Session monitor
                 </Button>
                 {onOpenScanner && (
-                  <Button variant="primary" icon={<QrCode size={16} />} onClick={onOpenScanner}>
+                  <Button variant="primary" icon={<ScanLine size={16} />} onClick={onOpenScanner}>
                     Turnstile Scanner
                   </Button>
                 )}
@@ -881,10 +887,10 @@ function Overview({
               <div className="empty-session">
                 <Clock3 size={30} />
                 <strong>No lunch session active</strong>
-                <p>Generate one shared cryptographic code for the two-hour lunch window.</p>
+                <p>Initialize turnstile telemetry for the two-hour lunch service window.</p>
               </div>
-              <Button icon={<QrCode size={18} />} onClick={onGenerate}>
-                Generate meal QR
+              <Button icon={<Play size={18} />} onClick={onGenerate}>
+                Open Lunch Session
               </Button>
             </>
           )}

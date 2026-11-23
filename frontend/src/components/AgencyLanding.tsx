@@ -420,7 +420,7 @@ export default function AgencyLanding({ onSelectRole }: AgencyLandingProps) {
                   Operations Console
                 </h3>
                 <p className="font-sans text-sm md:text-base text-neutral-400 max-w-md font-light leading-relaxed mb-8">
-                  Hardware turnstile QR scanner with sound verification, live student database whitelist checks, LightGBM quantile demand bounds, and dynamic ingredient procurement planning.
+                  Hardware turnstile scanner with audio verification, live student database whitelist checks, LightGBM quantile demand bounds, and dynamic ingredient procurement planning.
                 </p>
 
                 <div className="flex flex-wrap gap-2 font-mono text-[10px] text-neutral-400 uppercase tracking-wider mb-8">

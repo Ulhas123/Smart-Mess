@@ -2373,7 +2373,8 @@ h3 {
   gap: 40px;
 }
 
-.session-qr-column {
+.session-qr-column,
+.session-gate-column {
   text-align: center;
 }
 
@@ -2383,7 +2384,8 @@ h3 {
   box-shadow: 0 10px 35px rgba(16, 16, 16, 0.08);
 }
 
-.session-qr-column > p {
+.session-qr-column > p,
+.session-gate-column > p {
   margin-top: 11px;
   color: var(--muted);
   font-size: 9px;
@@ -2636,7 +2638,8 @@ h3 {
     grid-template-columns: 1fr;
   }
 
-  .session-qr-column {
+  .session-qr-column,
+  .session-gate-column {
     max-width: 300px;
     margin: 0 auto;
   }
@@ -2886,7 +2889,8 @@ h3 {
     gap: 24px;
   }
 
-  .session-qr-column {
+  .session-qr-column,
+  .session-gate-column {
     max-width: 230px;
   }
 }

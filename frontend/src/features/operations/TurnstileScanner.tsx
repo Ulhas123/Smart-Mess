@@ -6,8 +6,8 @@ import {
   CheckCircle2,
   Clock,
   IdCard,
-  QrCode,
   RefreshCw,
+  ScanLine,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -225,9 +225,9 @@ export default function TurnstileScanner() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap", gap: 14 }}>
         <div>
           <Eyebrow>Institutional Turnstile Telemetry</Eyebrow>
-          <h1 style={{ fontSize: 28, marginTop: 4 }}>Mess Entrance QR Scanner</h1>
+          <h1 style={{ fontSize: 28, marginTop: 4 }}>Mess Entrance Turnstile Scanner</h1>
           <p style={{ fontSize: 13, color: "var(--muted)", maxWidth: 640 }}>
-            Scan student digital QR passes to verify mess enrollment, prevent duplicate entries, and log real-time headcount.
+            Scan student digital passes or credentials to verify mess enrollment, prevent duplicate entries, and log real-time headcount.
           </p>
         </div>
 
@@ -270,7 +270,7 @@ export default function TurnstileScanner() {
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <QrCode size={20} />
+              <ScanLine size={20} />
               <h3 style={{ fontSize: 18, fontWeight: 600 }}>Active Scanner Viewport</h3>
             </div>
             
@@ -374,12 +374,12 @@ export default function TurnstileScanner() {
                   }}
                 />
                 <span style={{ fontSize: 10, color: "#ffffff", background: "rgba(0,0,0,0.6)", padding: "2px 6px", borderRadius: 4 }}>
-                  Align student QR pass
+                  Align student pass
                 </span>
               </div>
             ) : (
               <div style={{ textAlign: "center", color: "rgba(255,255,255,0.7)", padding: 20 }}>
-                <QrCode size={48} style={{ margin: "0 auto 10px", opacity: 0.5 }} />
+                <ScanLine size={48} style={{ margin: "0 auto 10px", opacity: 0.5 }} />
                 <strong style={{ display: "block", fontSize: 14, color: "#ffffff" }}>Webcam Scanner Inactive</strong>
                 <p style={{ fontSize: 12, marginTop: 4, maxWidth: 300, margin: "4px auto 0", opacity: 0.8 }}>
                   Click "Start Live Webcam Scanner" to scan from mobile/laptop camera, or use the fast simulation tools below.
@@ -393,7 +393,7 @@ export default function TurnstileScanner() {
             <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
               <input
                 type="text"
-                placeholder="Enter Student Roll No. or paste QR string..."
+                placeholder="Enter Student Roll No. or scan token..."
                 value={manualInput}
                 onChange={(e) => setManualInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -432,10 +432,10 @@ export default function TurnstileScanner() {
                   fontSize: 12,
                   fontWeight: 600
                 }}
-                title="Scan QR code from an image file"
+                title="Scan pass or image file"
               >
                 <Upload size={14} />
-                <span>Upload QR</span>
+                <span>Upload Pass</span>
                 <input type="file" accept="image/*" onChange={handleImageUpload} style={{ display: "none" }} />
               </label>
             </div>
@@ -563,7 +563,7 @@ export default function TurnstileScanner() {
               {!scanResult ? (
                 <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
                   <ShieldCheck size={48} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
-                  <strong style={{ fontSize: 16, display: "block", color: "#ffffff" }}>Waiting for Student QR Code</strong>
+                  <strong style={{ fontSize: 16, display: "block", color: "#ffffff" }}>Waiting for Student Pass / Scan</strong>
                   <p style={{ fontSize: 12, marginTop: 4 }}>
                     When a student presents their digital meal pass, turnstile authorization will show here immediately.
                   </p>
