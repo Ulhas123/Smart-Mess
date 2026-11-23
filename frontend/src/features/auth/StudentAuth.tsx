@@ -6,11 +6,13 @@ import {
   LogIn, 
   Upload, 
   UserPlus, 
-  XCircle 
+  XCircle,
+  ShieldAlert,
+  Sparkles
 } from "lucide-react"
 import { loginStudent, registerStudent } from "../../services/api"
 import { WeatherWidget } from "../../components/WeatherWidget"
-import { Brand, Button, Eyebrow } from "../../components/UI"
+import PrayagrajClockBadge from "../../components/agency/PrayagrajClockBadge"
 import type { StudentUser } from "../../types"
 
 type StudentAuthProps = {
@@ -64,7 +66,7 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
     const roll = regRoll.trim() || "IEC2023" + Math.floor(100 + Math.random() * 900)
     const name = regName.trim() || "IIITA Student"
     const hostel = regHostel || "BH-2"
-    const svg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'><rect width='320' height='200' rx='12' fill='%230f172a'/><rect x='10' y='10' width='300' height='180' rx='8' fill='%231e293b' stroke='%2338bdf8' stroke-width='2'/><text x='160' y='40' fill='%2338bdf8' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'>INDIAN INSTITUTE OF INFORMATION TECHNOLOGY</text><text x='160' y='58' fill='%2394a3b8' font-family='sans-serif' font-size='11' text-anchor='middle'>ALLAHABAD · STUDENT IDENTITY CARD</text><rect x='25' y='75' width='65' height='80' rx='6' fill='%23334155'/><circle cx='57' cy='105' r='18' fill='%23cbd5e1'/><path d='M35 150 C35 125 80 125 80 150 Z' fill='%23cbd5e1'/><text x='105' y='95' fill='%23ffffff' font-family='sans-serif' font-size='13' font-weight='bold'>${name}</text><text x='105' y='115' fill='%2338bdf8' font-family='monospace' font-size='12'>${roll}</text><text x='105' y='133' fill='%23cbd5e1' font-family='sans-serif' font-size='11'>Hostel: ${hostel} · ECE Dept</text><text x='105' y='150' fill='%234ade80' font-family='sans-serif' font-size='10' font-weight='bold'>MESS AUTHORIZED 2026</text></svg>`
+    const svg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='320' height='200' viewBox='0 0 320 200'><rect width='320' height='200' rx='12' fill='%2309090b'/><rect x='10' y='10' width='300' height='180' rx='8' fill='%23121214' stroke='%2338bdf8' stroke-width='2'/><text x='160' y='40' fill='%2338bdf8' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle'>INDIAN INSTITUTE OF INFORMATION TECHNOLOGY</text><text x='160' y='58' fill='%2394a3b8' font-family='sans-serif' font-size='11' text-anchor='middle'>ALLAHABAD · STUDENT IDENTITY CARD</text><rect x='25' y='75' width='65' height='80' rx='6' fill='%2318181b'/><circle cx='57' cy='105' r='18' fill='%23cbd5e1'/><path d='M35 150 C35 125 80 125 80 150 Z' fill='%23cbd5e1'/><text x='105' y='95' fill='%23ffffff' font-family='sans-serif' font-size='13' font-weight='bold'>${name}</text><text x='105' y='115' fill='%2338bdf8' font-family='monospace' font-size='12'>${roll}</text><text x='105' y='133' fill='%23cbd5e1' font-family='sans-serif' font-size='11'>Hostel: ${hostel} · ECE Dept</text><text x='105' y='150' fill='%2310b981' font-family='sans-serif' font-size='10' font-weight='bold'>MESS AUTHORIZED 2026</text></svg>`
     setIdCardData(svg)
     setIdCardFileName(`${roll}_iiita_id.svg`)
     setRegError(null)
@@ -132,125 +134,100 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
   }
 
   return (
-    <div className="landing" style={{ minHeight: "100vh", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-      <div className="landing-glow landing-glow-a" />
-      <div className="landing-glow landing-glow-b" />
-
+    <div className="relative min-h-screen bg-[#09090b] text-neutral-100 flex flex-col justify-between selection:bg-amber-400 selection:text-black">
+      
       {/* Top Header */}
-      <header className="landing-header" style={{ width: "100%", maxWidth: 1100, margin: "0 auto", padding: "20px 24px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button 
-            onClick={onBack}
-            className="button button-ghost"
-            style={{ padding: "6px 12px", display: "flex", alignItems: "center", gap: 6 }}
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Portal</span>
-          </button>
-          <Brand />
-        </div>
+      <header className="sticky top-0 z-30 w-full backdrop-blur-xl bg-[#09090b]/80 border-b border-white/10 px-6 md:px-16 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onBack}
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/20 bg-white/5 hover:bg-white hover:text-black font-mono text-xs uppercase tracking-wider transition-all"
+            >
+              <ArrowLeft size={14} />
+              <span>Back to Portal</span>
+            </button>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold tracking-[0.25em] text-white">MESA</span>
+              <span className="text-white/20">/</span>
+              <span className="font-mono text-[10px] text-neutral-400 tracking-wider uppercase hidden sm:inline">
+                Resident Terminal
+              </span>
+            </div>
+          </div>
 
-        {/* Live Weather Widget for Prayagraj, UP */}
-        <WeatherWidget variant="header" />
+          <div className="flex items-center gap-3">
+            <div className="hidden md:flex items-center">
+              <PrayagrajClockBadge variant="compact" />
+            </div>
+            <WeatherWidget variant="header" />
+          </div>
+        </div>
       </header>
 
       {/* Main Auth Container */}
-      <main style={{ maxWidth: 540, width: "100%", margin: "20px auto 40px", padding: "0 20px" }}>
-        <div 
-          style={{
-            background: "rgba(255, 255, 255, 0.04)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            borderRadius: 20,
-            padding: 32,
-            backdropFilter: "blur(16px)",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.3)"
-          }}
-        >
-          {/* Top Title & Mode Tabs */}
-          <div style={{ textAlign: "center", marginBottom: 24 }}>
-            <Eyebrow>Institutional Dining Access</Eyebrow>
-            <h2 style={{ fontSize: 28, marginTop: 6, marginBottom: 8 }}>
-              {mode === "login" ? "Student Sign In" : "Student Registration"}
+      <main className="flex-1 max-w-lg w-full mx-auto my-12 px-4 flex flex-col justify-center">
+        <div className="rounded-2xl border border-white/10 bg-[#121214] p-6 sm:p-8 shadow-2xl shadow-black/80 backdrop-blur-xl">
+          
+          {/* Header & Mode Switcher */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-amber-400 mb-2">
+              <Sparkles size={13} />
+              <span>Institutional Dining Access · IIIT Allahabad</span>
+            </div>
+            
+            <h2 className="text-2xl sm:text-3xl font-display font-light text-white tracking-tight mb-2">
+              {mode === "login" ? "Student Sign In" : "Resident Registration"}
             </h2>
-            <p style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.65)" }}>
+            <p className="font-sans text-xs text-neutral-400 font-light max-w-sm mx-auto">
               {mode === "login" 
-                ? "Sign in with your Roll Number to generate your mess entry QR code."
-                : "Register with your Roll Number and upload your College ID Card."}
+                ? "Sign in with your Roll Number to generate your cryptographic dynamic QR meal pass."
+                : "Register your student identity and upload your verified college ID card."}
             </p>
 
-            <div 
-              style={{
-                display: "inline-flex",
-                background: "rgba(255, 255, 255, 0.08)",
-                padding: 4,
-                borderRadius: 12,
-                marginTop: 18,
-                width: "100%"
-              }}
-            >
+            {/* Mode Switch Tabs */}
+            <div className="mt-6 p-1 rounded-xl bg-[#18181b] border border-white/10 flex gap-1">
               <button
                 type="button"
                 onClick={() => { setMode("login"); setLoginError(null); setRegError(null); }}
-                style={{
-                  flex: 1,
-                  padding: "10px 16px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: mode === "login" ? "#ffffff" : "transparent",
-                  color: mode === "login" ? "#0f172a" : "rgba(255, 255, 255, 0.7)",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  transition: "all 0.2s"
-                }}
+                className={`flex-1 py-2.5 px-4 rounded-lg font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                  mode === "login"
+                    ? "bg-white text-black font-bold shadow-md"
+                    : "text-neutral-400 hover:text-white bg-transparent"
+                }`}
               >
-                <LogIn size={15} />
+                <LogIn size={14} />
                 <span>Sign In</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => { setMode("register"); setLoginError(null); setRegError(null); }}
-                style={{
-                  flex: 1,
-                  padding: "10px 16px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: mode === "register" ? "#ffffff" : "transparent",
-                  color: mode === "register" ? "#0f172a" : "rgba(255, 255, 255, 0.7)",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  transition: "all 0.2s"
-                }}
+                className={`flex-1 py-2.5 px-4 rounded-lg font-mono text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${
+                  mode === "register"
+                    ? "bg-white text-black font-bold shadow-md"
+                    : "text-neutral-400 hover:text-white bg-transparent"
+                }`}
               >
-                <UserPlus size={15} />
-                <span>Register New Student</span>
+                <UserPlus size={14} />
+                <span>Register</span>
               </button>
             </div>
           </div>
 
           {/* LOGIN FORM */}
           {mode === "login" && (
-            <form onSubmit={handleLoginSubmit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5">
               {loginError && (
-                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", borderRadius: 8, padding: 12, color: "#fca5a5", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-                  <XCircle size={16} />
+                <div className="p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5">
+                  <XCircle size={16} className="shrink-0" />
                   <span>{loginError}</span>
                 </div>
               )}
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "rgba(255,255,255,0.8)" }}>
-                  Login ID (Student Roll Number)
+                <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
+                  Student Roll Number (Login ID)
                 </label>
                 <input
                   type="text"
@@ -258,21 +235,12 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                   value={loginRoll}
                   onChange={(e) => setLoginRoll(e.target.value.toUpperCase())}
                   required
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    background: "rgba(255, 255, 255, 0.08)",
-                    border: "1px solid rgba(255, 255, 255, 0.16)",
-                    color: "#ffffff",
-                    fontSize: 14,
-                    outline: "none"
-                  }}
+                  className="w-full px-3.5 py-3 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 text-sm font-sans"
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 6, color: "rgba(255,255,255,0.8)" }}>
+                <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
                   Password
                 </label>
                 <input
@@ -281,81 +249,71 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                   value={loginPassword}
                   onChange={(e) => setLoginPassword(e.target.value)}
                   required
-                  style={{
-                    width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 10,
-                    background: "rgba(255, 255, 255, 0.08)",
-                    border: "1px solid rgba(255, 255, 255, 0.16)",
-                    color: "#ffffff",
-                    fontSize: 14,
-                    outline: "none"
-                  }}
+                  className="w-full px-3.5 py-3 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-400 text-sm font-sans"
                 />
               </div>
 
               {/* Demo Accounts Quick-Fill */}
-              <div style={{ background: "rgba(255, 255, 255, 0.03)", padding: 12, borderRadius: 10, border: "1px solid rgba(255, 255, 255, 0.08)" }}>
-                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", display: "block", marginBottom: 6 }}>
+              <div className="p-3.5 rounded-lg bg-[#18181b]/70 border border-white/10">
+                <span className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest block mb-2">
                   Quick Fill Demo Student Credentials:
                 </span>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={() => { setLoginRoll("IEC2023059"); setLoginPassword("student123"); }}
-                    style={{ fontSize: 11, padding: "4px 8px", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 6, color: "#cbd5e1", cursor: "pointer" }}
+                    className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-neutral-300 hover:text-white font-mono text-xs transition-colors"
                   >
                     IEC2023059 (Tushar Garg)
                   </button>
                   <button
                     type="button"
                     onClick={() => { setLoginRoll("IEC2023037"); setLoginPassword("student123"); }}
-                    style={{ fontSize: 11, padding: "4px 8px", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 6, color: "#cbd5e1", cursor: "pointer" }}
+                    className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-neutral-300 hover:text-white font-mono text-xs transition-colors"
                   >
                     IEC2023037 (Varun Karankar)
                   </button>
                   <button
                     type="button"
                     onClick={() => { setLoginRoll("IEC2023058"); setLoginPassword("student123"); }}
-                    style={{ fontSize: 11, padding: "4px 8px", background: "rgba(255,255,255,0.1)", border: "none", borderRadius: 6, color: "#cbd5e1", cursor: "pointer" }}
+                    className="px-2.5 py-1 rounded bg-white/5 hover:bg-white/15 border border-white/10 text-neutral-300 hover:text-white font-mono text-xs transition-colors"
                   >
                     IEC2023058 (Aadarsh Singh)
                   </button>
                 </div>
               </div>
 
-              <Button
+              <button
                 type="submit"
-                variant="primary"
                 disabled={loginLoading}
-                style={{ width: "100%", padding: 14, fontSize: 14, marginTop: 8 }}
+                className="w-full py-3.5 rounded-full font-mono text-xs uppercase tracking-[0.2em] font-bold bg-white text-black hover:bg-neutral-200 shadow-xl transition-all disabled:opacity-50 mt-2 cursor-pointer"
               >
-                {loginLoading ? "Authenticating..." : "Sign In to Student Portal"}
-              </Button>
+                {loginLoading ? "Authenticating..." : "Sign In to Student Portal →"}
+              </button>
             </form>
           )}
 
           {/* REGISTER FORM */}
           {mode === "register" && (
-            <form onSubmit={handleRegisterSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <form onSubmit={handleRegisterSubmit} className="flex flex-col gap-4">
               {regError && (
-                <div style={{ background: "rgba(239, 68, 68, 0.15)", border: "1px solid #ef4444", borderRadius: 8, padding: 12, color: "#fca5a5", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-                  <XCircle size={16} />
+                <div className="p-3 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2.5">
+                  <XCircle size={16} className="shrink-0" />
                   <span>{regError}</span>
                 </div>
               )}
 
               {regSuccess && (
-                <div style={{ background: "rgba(34, 197, 94, 0.15)", border: "1px solid #22c55e", borderRadius: 8, padding: 12, color: "#86efac", fontSize: 13, display: "flex", alignItems: "center", gap: 8 }}>
-                  <CheckCircle size={16} />
+                <div className="p-3 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs flex items-center gap-2.5">
+                  <CheckCircle size={16} className="shrink-0" />
                   <span>{regSuccess}</span>
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "rgba(255,255,255,0.8)" }}>
-                    Roll Number (Login ID) *
+                  <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
+                    Roll Number *
                   </label>
                   <input
                     type="text"
@@ -363,20 +321,12 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                     value={regRoll}
                     onChange={(e) => setRegRoll(e.target.value.toUpperCase())}
                     required
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      color: "#ffffff",
-                      fontSize: 13,
-                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none text-xs font-sans"
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "rgba(255,255,255,0.8)" }}>
+                  <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
                     Full Name *
                   </label>
                   <input
@@ -385,48 +335,32 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                     value={regName}
                     onChange={(e) => setRegName(e.target.value)}
                     required
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      color: "#ffffff",
-                      fontSize: 13,
-                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none text-xs font-sans"
                   />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "rgba(255,255,255,0.8)" }}>
+                  <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
                     Assigned Hostel *
                   </label>
                   <select
                     value={regHostel}
                     onChange={(e) => setRegHostel(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "#1e293b",
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      color: "#ffffff",
-                      fontSize: 13,
-                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#18181b] border border-white/15 text-white focus:border-amber-400 focus:outline-none text-xs font-sans"
                   >
-                    <option value="BH-1">BH-1 Hostel</option>
-                    <option value="BH-2">BH-2 Hostel</option>
-                    <option value="BH-3">BH-3 Hostel (Non-Veg option)</option>
-                    <option value="GH-1">GH-1 Hostel</option>
-                    <option value="GH-2">GH-2 Hostel</option>
-                    <option value="GH-3">GH-3 Hostel</option>
+                    <option value="BH-1" className="bg-[#18181b] text-white">BH-1 Hostel</option>
+                    <option value="BH-2" className="bg-[#18181b] text-white">BH-2 Hostel (Pure Veg)</option>
+                    <option value="BH-3" className="bg-[#18181b] text-white">BH-3 Hostel (Non-Veg)</option>
+                    <option value="GH-1" className="bg-[#18181b] text-white">GH-1 Hostel</option>
+                    <option value="GH-2" className="bg-[#18181b] text-white">GH-2 Hostel</option>
+                    <option value="GH-3" className="bg-[#18181b] text-white">GH-3 Hostel</option>
                   </select>
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "rgba(255,255,255,0.8)" }}>
+                  <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
                     Email (Optional)
                   </label>
                   <input
@@ -434,23 +368,15 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                     placeholder="roll@iiita.ac.in"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      color: "#ffffff",
-                      fontSize: 13,
-                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none text-xs font-sans"
                   />
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "rgba(255,255,255,0.8)" }}>
-                    Choose Password *
+                  <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
+                    Password *
                   </label>
                   <input
                     type="password"
@@ -458,20 +384,12 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                     value={regPassword}
                     onChange={(e) => setRegPassword(e.target.value)}
                     required
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      color: "#ffffff",
-                      fontSize: 13,
-                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none text-xs font-sans"
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, color: "rgba(255,255,255,0.8)" }}>
+                  <label className="block text-neutral-300 font-mono text-xs uppercase tracking-wider mb-1.5">
                     Confirm Password *
                   </label>
                   <input
@@ -480,136 +398,87 @@ export default function StudentAuth({ onLoginSuccess, onBack }: StudentAuthProps
                     value={regConfirmPassword}
                     onChange={(e) => setRegConfirmPassword(e.target.value)}
                     required
-                    style={{
-                      width: "100%",
-                      padding: "10px 12px",
-                      borderRadius: 8,
-                      background: "rgba(255, 255, 255, 0.08)",
-                      border: "1px solid rgba(255, 255, 255, 0.16)",
-                      color: "#ffffff",
-                      fontSize: 13,
-                    }}
+                    className="w-full px-3.5 py-2.5 rounded-lg bg-[#18181b] border border-white/15 text-white placeholder-neutral-500 focus:border-amber-400 focus:outline-none text-xs font-sans"
                   />
                 </div>
               </div>
 
-              {/* ID CARD UPLOAD SECTION (Mandatory per task specification) */}
-              <div 
-                style={{
-                  border: "1px dashed rgba(56, 189, 248, 0.4)",
-                  borderRadius: 12,
-                  padding: 16,
-                  background: "rgba(56, 189, 248, 0.03)",
-                  textAlign: "center"
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: "#38bdf8" }}>
-                    <IdCard size={16} />
+              {/* ID CARD UPLOAD SECTION */}
+              <div className="border border-dashed border-sky-400/40 rounded-xl p-4 bg-sky-950/20 text-center">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2 text-xs font-mono text-sky-400 font-medium">
+                    <IdCard size={15} />
                     <span>College Identity Card (Required) *</span>
                   </div>
                   <button
                     type="button"
                     onClick={handleUseMockId}
-                    style={{
-                      fontSize: 11,
-                      color: "#38bdf8",
-                      background: "rgba(56, 189, 248, 0.1)",
-                      border: "1px solid rgba(56, 189, 248, 0.3)",
-                      borderRadius: 6,
-                      padding: "3px 8px",
-                      cursor: "pointer"
-                    }}
-                    title="Instantly generate an official IIITA student ID card preview"
+                    className="text-[10px] font-mono px-2.5 py-1 rounded bg-sky-500/20 text-sky-300 border border-sky-500/30 hover:bg-sky-500/30 transition-colors"
                   >
                     + Generate Sample ID Card
                   </button>
                 </div>
 
                 {idCardData ? (
-                  <div style={{ marginTop: 8, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                    <div 
-                      style={{
-                        maxWidth: 240,
-                        maxHeight: 140,
-                        overflow: "hidden",
-                        borderRadius: 8,
-                        border: "1px solid rgba(255, 255, 255, 0.2)",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
-                      }}
-                    >
+                  <div className="mt-2 flex flex-col items-center gap-2">
+                    <div className="max-w-[220px] max-h-[130px] overflow-hidden rounded-lg border border-white/20 shadow-xl">
                       <img 
                         src={idCardData} 
                         alt="College ID Preview" 
-                        style={{ width: "100%", height: "auto", display: "block" }} 
+                        className="w-full h-auto block" 
                       />
                     </div>
-                    <div style={{ fontSize: 11, color: "#4ade80", display: "flex", alignItems: "center", gap: 4 }}>
+                    <div className="text-xs text-emerald-400 flex items-center gap-1.5 font-mono">
                       <CheckCircle size={14} />
                       <span>{idCardFileName || "ID Card Verified"}</span>
                     </div>
-                    <label 
-                      style={{
-                        fontSize: 11,
-                        color: "rgba(255, 255, 255, 0.7)",
-                        textDecoration: "underline",
-                        cursor: "pointer"
-                      }}
-                    >
+                    <label className="text-xs text-neutral-400 hover:text-white underline cursor-pointer">
                       Replace File
                       <input 
                         type="file" 
                         accept="image/*" 
                         onChange={handleFileUpload} 
-                        style={{ display: "none" }} 
+                        className="hidden" 
                       />
                     </label>
                   </div>
                 ) : (
-                  <label 
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "16px 8px",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <Upload size={24} style={{ color: "#38bdf8", opacity: 0.8 }} />
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>
+                  <label className="flex flex-col items-center gap-2 py-4 px-2 cursor-pointer">
+                    <Upload size={22} className="text-sky-400 opacity-90" />
+                    <span className="text-xs font-medium text-neutral-200">
                       Click to upload your College Identity Card
                     </span>
-                    <span style={{ fontSize: 11, color: "rgba(255, 255, 255, 0.5)" }}>
+                    <span className="text-[10px] text-neutral-400 font-mono">
                       Supports PNG, JPG, JPEG, SVG or WebP
                     </span>
                     <input 
                       type="file" 
                       accept="image/*" 
                       onChange={handleFileUpload} 
-                      style={{ display: "none" }} 
+                      className="hidden" 
                     />
                   </label>
                 )}
               </div>
 
-              <Button
+              <button
                 type="submit"
-                variant="primary"
                 disabled={regLoading}
-                style={{ width: "100%", padding: 14, fontSize: 14, marginTop: 4 }}
+                className="w-full py-3.5 rounded-full font-mono text-xs uppercase tracking-[0.2em] font-bold bg-white text-black hover:bg-neutral-200 shadow-xl transition-all disabled:opacity-50 mt-2 cursor-pointer"
               >
-                {regLoading ? "Registering Student..." : "Complete Registration & Sign In"}
-              </Button>
+                {regLoading ? "Registering Student..." : "Complete Registration & Sign In →"}
+              </button>
             </form>
           )}
+
         </div>
       </main>
 
       {/* Footer */}
-      <footer style={{ textAlign: "center", padding: "16px 20px", fontSize: 11, color: "rgba(255, 255, 255, 0.5)" }}>
+      <footer className="w-full py-6 text-center text-xs font-mono text-neutral-500 border-t border-white/5">
         Department of Electronics & Communication Engineering · Indian Institute of Information Technology, Allahabad
       </footer>
+
     </div>
   )
 }

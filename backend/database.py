@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional, List, Dict, Any
+from backend.time_utils import get_ist_now, get_ist_date_str, get_ist_time_str
 
 DB_PATH = Path(__file__).resolve().parent / "mess_system.db"
 
@@ -91,7 +92,7 @@ def init_db():
     # Seed sample attendance for today if empty
     cursor.execute("SELECT COUNT(*) FROM attendance")
     if cursor.fetchone()[0] == 0:
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        today_str = get_ist_date_str()
         initial_attendance = [
             ("IEC2023037", "Varun Karankar", "BH-2", "Lunch", today_str, "12:45:10", "APPROVED", "Entry Authorized"),
             ("IEC2023058", "Aadarsh Singh", "BH-3", "Lunch", today_str, "12:50:35", "APPROVED", "Entry Authorized"),
@@ -130,7 +131,7 @@ def register_student(roll: str, name: str, hostel: str, password: str,
         raise ValueError(f"Student with Roll Number {roll_upper} is already registered. Please log in.")
 
     email_val = email.strip() if email else f"{roll_upper.lower()}@iiita.ac.in"
-    reg_time = datetime.now().isoformat()
+    reg_time = get_ist_now().isoformat()
 
     conn = get_connection()
     cursor = conn.cursor()
@@ -219,8 +220,8 @@ def verify_vendor(vendor_id: str, password: str) -> Optional[Dict[str, Any]]:
 def record_attendance(roll: str, slot: str, force_date: Optional[str] = None) -> Dict[str, Any]:
     roll_upper = roll.strip().upper()
     student = get_student(roll_upper)
-    date_str = force_date or datetime.now().strftime("%Y-%m-%d")
-    time_str = datetime.now().strftime("%H:%M:%S")
+    date_str = force_date or get_ist_date_str()
+    time_str = get_ist_time_str()
 
     # 1. Check if student exists
     if not student:
@@ -321,7 +322,7 @@ def record_attendance(roll: str, slot: str, force_date: Optional[str] = None) ->
     }
 
 def get_today_attendance(date_str: Optional[str] = None) -> List[Dict[str, Any]]:
-    today = date_str or datetime.now().strftime("%Y-%m-%d")
+    today = date_str or get_ist_date_str()
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM attendance WHERE date = ? ORDER BY id DESC", (today,))

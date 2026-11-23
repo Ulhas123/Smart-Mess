@@ -38,7 +38,7 @@ export default function WhatIfSimulatorView() {
     {
       id: 'exam',
       title: 'Mid-Sem Exam Rush',
-      desc: 'Peak campus presence, students dining on campus, negligible exodus.',
+      desc: '+6% academic multiplier (1.06) driving exam attendance peak.',
       icon: Flame,
       color: 'border-amber-500 bg-amber-500/10 text-amber-500',
       apply: () => {
@@ -57,7 +57,7 @@ export default function WhatIfSimulatorView() {
     {
       id: 'diwali',
       title: 'Diwali Mass Exodus',
-      desc: 'Hawkes festival decay kernel triggered; 85% student departure.',
+      desc: 'Hawkes festival decay kernel (Diwali a=0.70, half-life b=2.5d) triggering 70% student exodus.',
       icon: ShieldAlert,
       color: 'border-rose-500 bg-rose-500/10 text-rose-500',
       apply: () => {
@@ -69,14 +69,14 @@ export default function WhatIfSimulatorView() {
         setIsRainy(false);
         setHasDessert(false);
         setIsSpecial(false);
-        setFestivalFactor(0.85);
+        setFestivalFactor(0.70);
         setActivePreset('diwali');
       }
     },
     {
       id: 'rainy',
       title: 'Rainy Sunday Brunch',
-      desc: 'Weekend morning lethargy compounded by heavy monsoon rain friction.',
+      desc: 'Monsoon morning downpour with weather multiplier 0.82 (-18% friction).',
       icon: CloudRain,
       color: 'border-blue-500 bg-blue-500/10 text-blue-500',
       apply: () => {
@@ -95,7 +95,7 @@ export default function WhatIfSimulatorView() {
     {
       id: 'bh3_feast',
       title: 'BH-3 Special Non-Veg Night',
-      desc: 'Friday non-veg pull factor in BH-3 attracting peak diner surge.',
+      desc: 'Friday non-veg pull factor (+7%) and dessert (+6%) in BH-3 non-veg mess.',
       icon: UtensilsCrossed,
       color: 'border-emerald-500 bg-emerald-500/10 text-emerald-500',
       apply: () => {
@@ -238,8 +238,9 @@ export default function WhatIfSimulatorView() {
                 onChange={(e) => { setHostel(e.target.value); setActivePreset(''); }}
                 className="w-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs font-medium"
               >
-                <option value="BH-2">BH-2 (Pure Veg)</option>
-                <option value="BH-3">BH-3 (Non-Veg)</option>
+                <option value="BH-2">BH-2 (Pure Veg, Cap 300)</option>
+                <option value="BH-3">BH-3 (Non-Veg, Cap 300)</option>
+                <option value="Combined">Combined Mess (Cap 600)</option>
               </select>
             </div>
             <div>

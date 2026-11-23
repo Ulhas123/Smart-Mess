@@ -58,6 +58,16 @@ def test_api_forecast():
     assert data["q10"] <= data["q50"] <= data["q75"] <= data["q90"]
     print(f"[PASS] POST /api/forecast (200 OK, q10={data['q10']}, q50={data['q50']}, q90={data['q90']})")
 
+def test_api_forecast_test_series():
+    res = client.get("/api/forecast/test-series?hostel=BH-2&slot=dinner&limit=21")
+    assert res.status_code == 200
+    data = res.json()
+    assert "records" in data and len(data["records"]) > 0
+    assert "metrics" in data
+    assert data["metrics"]["overall_test_wape"] == 25.95
+    assert data["metrics"]["overall_test_mae"] == 41.54
+    print(f"[PASS] GET /api/forecast/test-series (200 OK, {len(data['records'])} holdout records, WAPE=25.95%)")
+
 def test_api_procurement():
     for hostel in ["BH-2", "BH-3"]:
         payload = {"headcount": 200, "hostel": hostel, "slot": "dinner"}
@@ -312,6 +322,7 @@ if __name__ == "__main__":
     test_api_calendar()
     test_api_menu()
     test_api_forecast()
+    test_api_forecast_test_series()
     test_api_procurement()
     test_api_benchmarks()
     test_api_telemetry()

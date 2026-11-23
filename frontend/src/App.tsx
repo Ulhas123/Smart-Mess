@@ -1,171 +1,14 @@
 import { useEffect, useState } from "react"
-import {
-  ArrowRight,
-  BarChart3,
-  Check,
-  Download,
-  Github,
-  QrCode,
-  ShieldCheck,
-  Sparkles,
-  Users,
-} from "lucide-react"
-import { Brand, Button, Eyebrow } from "./components/UI"
+import AgencyLanding from "./components/AgencyLanding"
 import OperationsConsole from "./features/operations/OperationsConsole"
 import StudentPortal from "./features/student/StudentPortal"
 import StudentAuth from "./features/auth/StudentAuth"
 import VendorAuth from "./features/auth/VendorAuth"
-import { WeatherWidget } from "./components/WeatherWidget"
+import SmoothScroll from "./components/agency/SmoothScroll"
+import CustomCursor from "./components/agency/CustomCursor"
+import FilmGrainOverlay from "./components/agency/FilmGrainOverlay"
 import { student } from "./data/demoData"
 import type { MealClaim, MealSession, Role, ScanResult, StudentUser, VendorUser } from "./types"
-
-function RoleLanding({ onSelect }: { onSelect: (role: Role) => void }) {
-  return (
-    <main className="landing">
-      <div className="landing-glow landing-glow-a" />
-      <div className="landing-glow landing-glow-b" />
-      <header className="landing-header" style={{ width: "100%", maxWidth: 1100, margin: "0 auto", padding: "20px 24px" }}>
-        <Brand />
-        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          {/* Live Free Weather API Integration for Prayagraj, UP */}
-          <WeatherWidget variant="header" />
-
-          <div className="landing-status">
-            <span className="pulse-dot" />
-            All dining systems operational
-          </div>
-          <a
-            href="/MinorProject_Presentation.pptx"
-            download="MinorProject_Presentation.pptx"
-            className="button button-ghost"
-            style={{ fontSize: 11, padding: "6px 12px", textDecoration: "none" }}
-          >
-            <Download size={14} />
-            <span>Deck (.pptx)</span>
-          </a>
-        </div>
-      </header>
-
-      <section className="landing-hero">
-        <div className="landing-copy">
-          <Eyebrow>Institutional dining management · IIIT Allahabad</Eyebrow>
-          <h1>
-            Meal service.
-            <br />
-            <em>Precisely managed.</em>
-          </h1>
-          <p>
-            Predictive mathematical demand modeling, real-time QR turnstile counter telemetry,
-            and zero-waste supply allocation for institutional dining.
-          </p>
-        </div>
-        <div className="landing-orbit" aria-hidden="true">
-          <div className="orbit-ring orbit-one" />
-          <div className="orbit-ring orbit-two" />
-          <div className="orbit-core">
-            <Sparkles size={28} />
-            <span>
-              Live
-              <br />
-              intelligence
-            </span>
-          </div>
-          <span className="orbit-stat orbit-stat-a">
-            <strong>96.4%</strong>forecast accuracy
-          </span>
-          <span className="orbit-stat orbit-stat-b">
-            <strong>−18%</strong>food waste
-          </span>
-          <span className="orbit-stat orbit-stat-c">
-            <strong>4 min</strong>queue time
-          </span>
-        </div>
-      </section>
-
-      <section className="role-selector">
-        <button
-          className="role-card student-role"
-          onClick={() => onSelect("student")}
-        >
-          <span className="role-number">01</span>
-          <div className="role-icon">
-            <QrCode size={28} />
-          </div>
-          <div>
-            <Eyebrow>For residents (Roll No. Login & ID Card)</Eyebrow>
-            <h2>Student portal</h2>
-            <p>Sign in with Roll No, upload college ID card during registration, generate meal pass QR code, review weekly menus, and inspect dining occupancy.</p>
-          </div>
-          <span className="role-action">
-            Enter student portal <ArrowRight size={18} />
-          </span>
-        </button>
-
-        <button
-          className="role-card operations-role"
-          onClick={() => onSelect("operations")}
-        >
-          <span className="role-number">02</span>
-          <div className="role-icon">
-            <BarChart3 size={28} />
-          </div>
-          <div>
-            <Eyebrow>For dining caterers (No Registration Needed)</Eyebrow>
-            <h2>Operations & vendor console</h2>
-            <p>Scan student QR passes to record attendance, verify allowed students, quantile forecasting, What-If simulator, and procurement planning.</p>
-          </div>
-          <span className="role-action">
-            Open vendor console <ArrowRight size={18} />
-          </span>
-        </button>
-      </section>
-
-      <footer className="landing-footer" style={{ flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-around", width: "100%", flexWrap: "wrap", gap: 16 }}>
-          <div>
-            <Users size={17} />
-            <strong>1,842</strong>
-            <span>meals served today</span>
-          </div>
-          <div>
-            <ShieldCheck size={17} />
-            <strong>100%</strong>
-            <span>verified turnstile access</span>
-          </div>
-          <div>
-            <Check size={17} />
-            <strong>19 kg</strong>
-            <span>residual waste vs 43 kg baseline</span>
-          </div>
-        </div>
-
-        <div
-          style={{
-            borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-            paddingTop: 12,
-            width: "100%",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            fontSize: 11,
-            color: "rgba(255, 255, 255, 0.5)",
-            flexWrap: "wrap",
-            gap: 8,
-          }}
-        >
-          <div>
-            Department of Electronics and Communication Engineering · Indian Institute of Information Technology, Allahabad
-          </div>
-          <div style={{ display: "flex", gap: 12 }}>
-            <span>Dr. Kirtan Gopal Panda (Supervisor)</span>
-            <span>·</span>
-            <span>Varun Karankar · Aadarsh Singh · Tushar Garg</span>
-          </div>
-        </div>
-      </footer>
-    </main>
-  )
-}
 
 export default function App() {
   const [role, setRole] = useState<Role | null>(null)
@@ -295,57 +138,59 @@ export default function App() {
       )
     : undefined
 
-  // Route 1: Landing Page
-  if (!role) {
-    return <RoleLanding onSelect={setRole} />
-  }
+  let content = null
 
-  // Route 2: Student Flow
-  if (role === "student") {
-    // If not logged in, show Student Login/Registration
+  if (!role) {
+    content = <AgencyLanding onSelectRole={setRole} />
+  } else if (role === "student") {
     if (!studentUser) {
-      return (
+      content = (
         <StudentAuth
           onLoginSuccess={handleStudentLogin}
           onBack={() => setRole(null)}
         />
       )
+    } else {
+      content = (
+        <StudentPortal
+          studentUser={studentUser}
+          session={session}
+          claim={activeClaim}
+          onScan={scanSession}
+          onSwitch={() => setRole(null)}
+          onLogout={handleStudentLogout}
+        />
+      )
     }
-
-    // Once authenticated, show Student Portal
-    return (
-      <StudentPortal
-        studentUser={studentUser}
-        session={session}
-        claim={activeClaim}
-        onScan={scanSession}
-        onSwitch={() => setRole(null)}
-        onLogout={handleStudentLogout}
-      />
-    )
+  } else {
+    // operations role
+    if (!vendorUser) {
+      content = (
+        <VendorAuth
+          onLoginSuccess={handleVendorLogin}
+          onBack={() => setRole(null)}
+        />
+      )
+    } else {
+      content = (
+        <OperationsConsole
+          vendorUser={vendorUser}
+          session={session}
+          claims={claims}
+          onGenerateSession={generateSession}
+          onEndSession={endSession}
+          onSwitch={() => setRole(null)}
+          onLogout={handleVendorLogout}
+        />
+      )
+    }
   }
 
-  // Route 3: Vendor / Operations Flow
-  // If not logged in, show Vendor Login (no register option)
-  if (!vendorUser) {
-    return (
-      <VendorAuth
-        onLoginSuccess={handleVendorLogin}
-        onBack={() => setRole(null)}
-      />
-    )
-  }
-
-  // Once authenticated, show Operations & Vendor Console
   return (
-    <OperationsConsole
-      vendorUser={vendorUser}
-      session={session}
-      claims={claims}
-      onGenerateSession={generateSession}
-      onEndSession={endSession}
-      onSwitch={() => setRole(null)}
-      onLogout={handleVendorLogout}
-    />
+    <SmoothScroll>
+      <CustomCursor />
+      <FilmGrainOverlay />
+      {content}
+    </SmoothScroll>
   )
 }

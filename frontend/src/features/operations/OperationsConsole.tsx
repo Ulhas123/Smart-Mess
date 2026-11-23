@@ -34,9 +34,14 @@ import {
 } from "lucide-react"
 import {
   baselineCheckIns,
+  cookingTolerances,
   demandPoints,
+  testSeriesPoints,
+  testSeriesLunchPoints,
   initialStaffing,
   inventory,
+  newsvendorSummary,
+  regimeMatrixData,
   researchBenchmarks,
   researchPlots,
   wasteTrend,
@@ -47,6 +52,8 @@ import type {
   ResearchPlot,
   StaffingItem,
   VendorUser,
+  TestSeriesPoint,
+  IntradayDemandPoint,
 } from "../../types"
 import {
   Brand,
@@ -58,6 +65,7 @@ import {
 } from "../../components/UI"
 import { QRCode } from "../../components/QRCode"
 import { WeatherWidget } from "../../components/WeatherWidget"
+import PrayagrajClockBadge from "../../components/agency/PrayagrajClockBadge"
 import TurnstileScanner from "./TurnstileScanner"
 import AllowedStudents from "./AllowedStudents"
 
@@ -103,56 +111,542 @@ function formatTime(timestamp: number) {
   }).format(timestamp)
 }
 
-function DemandChart({ adjustment = 0 }: { adjustment?: number }) {
-  const width = 620
-  const height = 190
-  const max = 340
-  const path = (key: "forecast" | "actual") =>
-    demandPoints
-      .map((point, index) => {
-        const rawValue =
-          key === "forecast" ? point[key] * (1 + adjustment / 100) : point[key]
-        const value = Math.max(0, rawValue)
-        const x = (index / (demandPoints.length - 1)) * width
-        const y = Math.max(12, Math.min(height - 12, height - (value / max) * (height - 24) - 12))
-        return `${index === 0 ? "M" : "L"} ${x} ${y}`
-      })
-      .join(" ")
+function DemandChart({
+  adjustment = 0,
+  initialMode = "testWindow",
+}: {
+  adjustment?: number
+  initialMode?: "testWindow" | "intraday"
+}) {
+  const [chartMode, setChartMode] = useState<"testWindow" | "intraday">(initialMode)
+  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [seriesSlot, setSeriesSlot] = useState<"dinner" | "lunch">("dinner")
+
+  const width = 640
+  const height = 210
+  const paddingX = 30
+  const paddingY = 24
+
+  const activeTestPoints = seriesSlot === "dinner" ? testSeriesPoints : testSeriesLunchPoints
+
+  // Calculations for testWindow (21 days from holdout evaluation set)
+  const maxTestVal = 340
+  const testPointsCount = activeTestPoints.length
+
+  const getTestX = (index: number) =>
+    paddingX + (index / (testPointsCount - 1)) * (width - 2 * paddingX)
+
+  const getTestY = (val: number) => {
+    const clamped = Math.max(0, Math.min(maxTestVal, val))
+    return height - paddingY - (clamped / maxTestVal) * (height - 2 * paddingY)
+  }
+
+  // 90% Prediction Interval polygon path (q10 to q90 uncertainty envelope)
+  const piUpperPath = activeTestPoints
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${getTestX(i)} ${getTestY(p.q90)}`)
+    .join(" ")
+  const piLowerPath = [...activeTestPoints]
+    .reverse()
+    .map(
+      (p, i) =>
+        `L ${getTestX(testPointsCount - 1 - i)} ${getTestY(p.q10)}`,
+    )
+    .join(" ")
+  const piPolygonPath = `${piUpperPath} ${piLowerPath} Z`
+
+  // LightGBM point forecast line (q50) with dynamic adjustment
+  const forecastTestPath = activeTestPoints
+    .map((p, i) => {
+      const adjustedForecast =
+        adjustment !== 0
+          ? Math.round(p.forecast * (1 + adjustment / 100))
+          : p.forecast
+      return `${i === 0 ? "M" : "L"} ${getTestX(i)} ${getTestY(adjustedForecast)}`
+    })
+    .join(" ")
+
+  // Actual turnout telemetry path
+  const actualTestPath = activeTestPoints
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${getTestX(i)} ${getTestY(p.actual)}`)
+    .join(" ")
+
+  // Calculations for intraday 20-min service curve
+  const maxIntradayVal = 180
+  const intradayCount = demandPoints.length
+
+  const getIntraX = (index: number) =>
+    paddingX + (index / (intradayCount - 1)) * (width - 2 * paddingX)
+
+  const getIntraY = (val: number) => {
+    const clamped = Math.max(0, Math.min(maxIntradayVal, val))
+    return height - paddingY - (clamped / maxIntradayVal) * (height - 2 * paddingY)
+  }
+
+  // Intraday tolerance band (+/-35 pan margin around forecast)
+  const intraUpper = demandPoints
+    .map((p, i) => {
+      const f = Math.round(p.forecast * (1 + adjustment / 100))
+      return `${i === 0 ? "M" : "L"} ${getIntraX(i)} ${getIntraY(f + 35)}`
+    })
+    .join(" ")
+  const intraLower = [...demandPoints]
+    .reverse()
+    .map((p, i) => {
+      const f = Math.round(p.forecast * (1 + adjustment / 100))
+      return `L ${getIntraX(intradayCount - 1 - i)} ${getIntraY(Math.max(0, f - 35))}`
+    })
+    .join(" ")
+  const intraTolPolygon = `${intraUpper} ${intraLower} Z`
+
+  const forecastIntraPath = demandPoints
+    .map((p, i) => {
+      const f = Math.round(p.forecast * (1 + adjustment / 100))
+      return `${i === 0 ? "M" : "L"} ${getIntraX(i)} ${getIntraY(f)}`
+    })
+    .join(" ")
+
+  const actualIntraPath = demandPoints
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${getIntraX(i)} ${getIntraY(p.actual)}`)
+    .join(" ")
+
+  const activeHoverTest =
+    hoveredIdx !== null && chartMode === "testWindow"
+      ? activeTestPoints[hoveredIdx]
+      : null
+  const activeHoverIntra =
+    hoveredIdx !== null && chartMode === "intraday"
+      ? demandPoints[hoveredIdx]
+      : null
 
   return (
-    <div className="demand-chart">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        role="img"
-        aria-label="Forecast versus actual lunch demand"
+    <div className="demand-chart-container" style={{ width: "100%", marginTop: 16 }}>
+      {/* Chart Control Header */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 12,
+        }}
       >
-        <defs>
-          <linearGradient id="forecastFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="currentColor" stopOpacity=".22" />
-            <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-        {[0.25, 0.5, 0.75, 1].map((line) => (
-          <line
-            key={line}
-            x1="0"
-            y1={height * line}
-            x2={width}
-            y2={height * line}
-            className="chart-grid"
-          />
-        ))}
-        <path
-          d={`${path("forecast")} L ${width} ${height} L 0 ${height} Z`}
-          className="chart-area"
-        />
-        <path d={path("forecast")} className="chart-line chart-forecast" />
-        <path d={path("actual")} className="chart-line chart-actual" />
-      </svg>
-      <div className="chart-labels">
-        {demandPoints.map((point) => (
-          <span key={point.time}>{point.time}</span>
-        ))}
+        <div
+          style={{
+            display: "inline-flex",
+            background: "rgba(255,255,255,0.05)",
+            padding: 3,
+            borderRadius: 8,
+            border: "1px solid var(--line)",
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              setChartMode("testWindow")
+              setHoveredIdx(null)
+            }}
+            style={{
+              padding: "5px 12px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              background:
+                chartMode === "testWindow" ? "var(--emerald)" : "transparent",
+              color: chartMode === "testWindow" ? "#000" : "var(--muted)",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            3-Week Test Window (Plot 7 · 612 Holdout Meals)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setChartMode("intraday")
+              setHoveredIdx(null)
+            }}
+            style={{
+              padding: "5px 12px",
+              borderRadius: 6,
+              fontSize: 11,
+              fontWeight: 600,
+              background:
+                chartMode === "intraday" ? "var(--emerald)" : "transparent",
+              color: chartMode === "intraday" ? "#000" : "var(--muted)",
+              border: "none",
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+          >
+            Intraday Service Dynamics (20-min Telemetry)
+          </button>
+        </div>
+
+        {chartMode === "testWindow" && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 11, color: "var(--muted)" }}>Slot:</span>
+            <select
+              value={seriesSlot}
+              onChange={(e) => setSeriesSlot(e.target.value as any)}
+              style={{
+                background: "var(--paper)",
+                border: "1px solid var(--line)",
+                color: "var(--foreground)",
+                padding: "4px 8px",
+                borderRadius: 6,
+                fontSize: 11,
+                cursor: "pointer",
+              }}
+            >
+              <option value="dinner">BH-2 Dinner (Plot 7 Ground Truth · 28.0% WAPE)</option>
+              <option value="lunch">BH-2 Lunch (36.2% WAPE)</option>
+            </select>
+          </div>
+        )}
+      </div>
+
+      {/* SVG Canvas Viewport */}
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          overflow: "hidden",
+          background: "rgba(0,0,0,0.25)",
+          borderRadius: 12,
+          border: "1px solid rgba(255,255,255,0.08)",
+          padding: "10px 0",
+        }}
+      >
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          style={{ width: "100%", height: "auto", display: "block" }}
+          role="img"
+          aria-label="Forecast versus real actual attendance trajectory"
+        >
+          <defs>
+            <linearGradient id="pi90Grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.04" />
+            </linearGradient>
+            <linearGradient id="panTolGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.18" />
+              <stop offset="100%" stopColor="#38bdf8" stopOpacity="0.03" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines */}
+          {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
+            <line
+              key={ratio}
+              x1={paddingX}
+              y1={height * ratio}
+              x2={width - paddingX}
+              y2={height * ratio}
+              stroke="rgba(255, 255, 255, 0.08)"
+              strokeDasharray="3 3"
+            />
+          ))}
+
+          {chartMode === "testWindow" ? (
+            <>
+              {/* 90% Prediction Interval Shaded Envelope */}
+              <path d={piPolygonPath} fill="url(#pi90Grad)" />
+
+              {/* LightGBM Forecast Line (q50) */}
+              <path
+                d={forecastTestPath}
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Actual Headcount Line */}
+              <path
+                d={actualTestPath}
+                fill="none"
+                stroke="#d4af37"
+                strokeWidth="1.8"
+                strokeDasharray="4 4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+
+              {/* Data points for Actual */}
+              {activeTestPoints.map((p, idx) => {
+                const cx = getTestX(idx)
+                const cy = getTestY(p.actual)
+                const isHovered = hoveredIdx === idx
+                return (
+                  <circle
+                    key={p.date}
+                    cx={cx}
+                    cy={cy}
+                    r={isHovered ? 6 : 3.5}
+                    fill={isHovered ? "#fff" : "#d4af37"}
+                    stroke="#09090b"
+                    strokeWidth="1.5"
+                    style={{ cursor: "pointer", transition: "r 0.15s ease" }}
+                    onMouseEnter={() => setHoveredIdx(idx)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                  />
+                )
+              })}
+            </>
+          ) : (
+            <>
+              {/* Commercial +/-35 Pan Margin Shaded Envelope */}
+              <path d={intraTolPolygon} fill="url(#panTolGrad)" />
+
+              {/* Forecast Line */}
+              <path
+                d={forecastIntraPath}
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+
+              {/* Actual Line */}
+              <path
+                d={actualIntraPath}
+                fill="none"
+                stroke="#d4af37"
+                strokeWidth="2"
+                strokeDasharray="4 4"
+                strokeLinecap="round"
+              />
+
+              {/* Intraday actual markers */}
+              {demandPoints.map((p, idx) => {
+                const cx = getIntraX(idx)
+                const cy = getIntraY(p.actual)
+                const isHovered = hoveredIdx === idx
+                return (
+                  <circle
+                    key={p.time}
+                    cx={cx}
+                    cy={cy}
+                    r={isHovered ? 6 : 4}
+                    fill={isHovered ? "#fff" : "#d4af37"}
+                    stroke="#09090b"
+                    strokeWidth="1.5"
+                    style={{ cursor: "pointer", transition: "r 0.15s ease" }}
+                    onMouseEnter={() => setHoveredIdx(idx)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                  />
+                )
+              })}
+            </>
+          )}
+        </svg>
+
+        {/* Dynamic Hover HUD Tooltip */}
+        {activeHoverTest && (
+          <div
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 14,
+              background: "rgba(18, 18, 20, 0.95)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              borderRadius: 8,
+              padding: "7px 12px",
+              fontSize: 11,
+              color: "#fff",
+              backdropFilter: "blur(12px)",
+              boxShadow: "0 6px 20px rgba(0,0,0,0.6)",
+              display: "flex",
+              gap: 14,
+              alignItems: "center",
+              zIndex: 10,
+            }}
+          >
+            <div>
+              <span style={{ color: "var(--muted)", display: "block", fontSize: 9 }}>
+                {activeHoverTest.date} · {activeHoverTest.phase}
+              </span>
+              <strong>
+                Actual: <span style={{ color: "#d4af37" }}>{activeHoverTest.actual} heads</span>
+              </strong>
+            </div>
+            <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
+              <span style={{ color: "var(--muted)", display: "block", fontSize: 9 }}>
+                LightGBM q50: <span style={{ color: "#10b981" }}>{activeHoverTest.forecast}</span>
+              </span>
+              <span style={{ color: "#94a3b8", fontSize: 10 }}>
+                90% PI: [{activeHoverTest.q10}, {activeHoverTest.q90}]
+              </span>
+            </div>
+            <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 12, textAlign: "right" }}>
+              <span style={{ color: "var(--muted)", display: "block", fontSize: 9 }}>Residual Error</span>
+              <strong style={{ color: activeHoverTest.error <= 35 ? "#10b981" : "#f59e0b" }}>
+                {activeHoverTest.error} heads {activeHoverTest.error <= 35 ? "✓ (±35 pan)" : "⚠ (surge)"}
+              </strong>
+            </div>
+          </div>
+        )}
+
+        {activeHoverIntra && (
+          <div
+            style={{
+              position: "absolute",
+              top: 10,
+              right: 14,
+              background: "rgba(18, 18, 20, 0.95)",
+              border: "1px solid rgba(255,255,255,0.18)",
+              borderRadius: 8,
+              padding: "7px 12px",
+              fontSize: 11,
+              color: "#fff",
+              backdropFilter: "blur(12px)",
+              display: "flex",
+              gap: 14,
+              alignItems: "center",
+              zIndex: 10,
+            }}
+          >
+            <div>
+              <span style={{ color: "var(--muted)", display: "block", fontSize: 9 }}>
+                Slot: {activeHoverIntra.time}
+              </span>
+              <strong>
+                Actual: <span style={{ color: "#d4af37" }}>{activeHoverIntra.actual} arrivals</span>
+              </strong>
+            </div>
+            <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 12 }}>
+              <span style={{ color: "var(--muted)", display: "block", fontSize: 9 }}>Forecast (q50)</span>
+              <strong style={{ color: "#10b981" }}>
+                {Math.round(activeHoverIntra.forecast * (1 + adjustment / 100))} arrivals
+              </strong>
+            </div>
+            <div style={{ borderLeft: "1px solid var(--line)", paddingLeft: 12, textAlign: "right" }}>
+              <span style={{ color: "var(--muted)", display: "block", fontSize: 9 }}>Arrival Gap</span>
+              <strong
+                style={{
+                  color:
+                    Math.abs(
+                      activeHoverIntra.actual -
+                        Math.round(activeHoverIntra.forecast * (1 + adjustment / 100)),
+                    ) <= 35
+                      ? "#10b981"
+                      : "#f59e0b",
+                }}
+              >
+                {Math.abs(
+                  activeHoverIntra.actual -
+                    Math.round(activeHoverIntra.forecast * (1 + adjustment / 100)),
+                )}{" "}
+                heads
+              </strong>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* X-Axis Labels */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          color: "var(--muted)",
+          fontSize: 9,
+          marginTop: 6,
+          padding: `0 ${paddingX}px`,
+        }}
+      >
+        {chartMode === "testWindow"
+          ? activeTestPoints
+              .filter((_, idx) => idx % 3 === 0 || idx === activeTestPoints.length - 1)
+              .map((p) => <span key={p.date}>{p.display}</span>)
+          : demandPoints.map((p) => <span key={p.time}>{p.time}</span>)}
+      </div>
+
+      {/* Legend & Rigor Status Pills */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 10,
+          marginTop: 12,
+          paddingTop: 10,
+          borderTop: "1px solid var(--line)",
+          fontSize: 11,
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 14 }}>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 12, height: 3, background: "#10b981", borderRadius: 2 }} />
+            <span style={{ color: "var(--foreground)" }}>LightGBM Forecast (q50)</span>
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 12, height: 2, borderTop: "2px dashed #d4af37" }} />
+            <span style={{ color: "var(--foreground)" }}>Actual Telemetry Check-ins</span>
+          </span>
+          <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span
+              style={{
+                width: 12,
+                height: 10,
+                background: "rgba(16, 185, 129, 0.2)",
+                borderRadius: 2,
+                border: "1px solid rgba(16, 185, 129, 0.4)",
+              }}
+            />
+            <span style={{ color: "var(--muted)" }}>
+              {chartMode === "testWindow"
+                ? "90% Prediction Interval (q10–q90)"
+                : "±35 Pan Margin"}
+            </span>
+          </span>
+        </div>
+
+        {/* Rigor Indicators */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 10,
+            fontFamily: "var(--mono)",
+          }}
+        >
+          <span
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              color: "#10b981",
+            }}
+          >
+            WAPE: 25.95%
+          </span>
+          <span
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              color: "#38bdf8",
+            }}
+          >
+            MAE: 41.54 heads
+          </span>
+          <span
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              padding: "2px 6px",
+              borderRadius: 4,
+              color: "#f59e0b",
+            }}
+          >
+            ±35 Pan: 50.33%
+          </span>
+        </div>
       </div>
     </div>
   )
@@ -291,7 +785,7 @@ function Overview({
       </div>
 
       <section className="metric-grid">
-        <Metric label="Forecast covers" value="748" detail="96.4% confidence (q50)" />
+        <Metric label="Forecast covers" value="402" detail="67.0% base capacity (q50)" />
         <Metric
           label="Actual check-ins"
           value={String(checkIns)}
@@ -300,10 +794,10 @@ function Overview({
         />
         <Metric
           label="Current occupancy"
-          value="62%"
-          detail="310 / 500 dining seats"
+          value="65%"
+          detail="390 / 600 dining seats"
         />
-        <Metric label="Predicted waste" value="2.6%" detail="↓ 18% vs baseline" />
+        <Metric label="Residual waste" value="13.98%" detail="-52.1% loss vs heuristic (26.7%)" />
       </section>
 
       <section className="ops-primary-grid">
@@ -408,7 +902,7 @@ function Overview({
           </div>
           <div className="occupancy-ring-wrap">
             <div className="occupancy-ring">
-              <strong>62%</strong>
+              <strong>65%</strong>
               <span>occupied</span>
             </div>
             <div className="floor-stats">
@@ -422,7 +916,7 @@ function Overview({
               </div>
               <div>
                 <span>Available seats</span>
-                <strong>190</strong>
+                <strong>210</strong>
               </div>
             </div>
           </div>
@@ -471,53 +965,93 @@ function Overview({
 }
 
 function Forecast() {
+  const [selectedHostel, setSelectedHostel] = useState<"Combined" | "BH-2" | "BH-3">("Combined")
+  const [selectedSlot, setSelectedSlot] = useState<"breakfast" | "lunch" | "dinner">("lunch")
   const [adjustment, setAdjustment] = useState(0)
   const [event, setEvent] = useState(false)
   const [activePreset, setActivePreset] = useState("normal")
-  const [liveQuantiles, setLiveQuantiles] = useState<{ q10: number; q50: number; q90: number } | null>(null)
+  const [liveData, setLiveData] = useState<{
+    q10: number
+    q50: number
+    q75: number
+    q90: number
+    newsvendor_procure_q: number
+    capacity: number
+    utilization_pct: number
+    regime_classification?: { class: string; action: string; badge: string }
+  } | null>(null)
 
-  const effectiveAdjustment = adjustment + (event ? 8 : 0)
-  const projected = Math.round(748 * (1 + effectiveAdjustment / 100))
+  // Grounded capacities: BH-2 = 300, BH-3 = 300, Combined = 600
+  const capacity = selectedHostel === "Combined" ? 600 : 300
+  // Base rates from MinorProject_Final_Updated.pptx: Breakfast=0.42, Lunch=0.67, Dinner=0.76
+  const baseRate = selectedSlot === "breakfast" ? 0.42 : selectedSlot === "lunch" ? 0.67 : 0.76
+  const baseCovers = Math.round(capacity * baseRate)
+
+  const effectiveAdjustment = adjustment + (event ? 4 : 0) // Special menu pull factor +4%
+  const fallbackProjected = Math.round(baseCovers * (1 + effectiveAdjustment / 100))
 
   useEffect(() => {
     let active = true
     const params = {
       date: new Date().toISOString().split("T")[0],
-      hostel: "BH-2",
-      slot: "lunch",
+      hostel: selectedHostel,
+      slot: selectedSlot,
       academic_phase: activePreset === "exam" ? "Mid-Sem Exam" : "Normal",
       is_rainy: activePreset === "rain",
-      festival_factor: activePreset === "diwali" ? 0.9 : 0.0,
-      is_special: event
+      festival_factor: activePreset === "diwali" ? 0.70 : 0.0,
+      is_special: event,
+      has_dessert: true,
+      has_nonveg: selectedHostel === "BH-3" || selectedHostel === "Combined"
     }
     fetchForecast(params).then((res) => {
       if (active && res && res.q50) {
-        const scale = 748 / 300
-        setLiveQuantiles({
-          q10: Math.round(res.q10 * scale * (1 + adjustment / 100)),
-          q50: Math.round(res.q50 * scale * (1 + adjustment / 100)),
-          q90: Math.round(res.q90 * scale * (1 + adjustment / 100))
+        const mult = 1 + adjustment / 100
+        setLiveData({
+          q10: Math.round(res.q10 * mult),
+          q50: Math.round(res.q50 * mult),
+          q75: Math.round(res.q75 * mult),
+          q90: Math.round(res.q90 * mult),
+          newsvendor_procure_q: Math.round((res.newsvendor_procure_q || (res.q50 + 0.5 * (res.q90 - res.q50))) * mult),
+          capacity: res.capacity || capacity,
+          utilization_pct: res.utilization_pct || Math.round((res.q50 / capacity) * 100),
+          regime_classification: res.regime_classification
         })
       }
     }).catch(() => {})
     return () => { active = false }
-  }, [activePreset, adjustment, event])
+  }, [selectedHostel, selectedSlot, activePreset, adjustment, event, capacity])
 
   // Quantile bounds derived from empirical ratios or live backend forecast
-  const q10 = liveQuantiles?.q10 ?? Math.round(projected * 0.88)
-  const q50 = liveQuantiles?.q50 ?? projected
-  const q90 = liveQuantiles?.q90 ?? Math.round(projected * 1.12)
+  const q10 = liveData?.q10 ?? Math.round(fallbackProjected * 0.85)
+  const q50 = liveData?.q50 ?? fallbackProjected
+  const q75 = liveData?.q75 ?? Math.round(fallbackProjected * 1.08)
+  const q90 = liveData?.q90 ?? Math.round(fallbackProjected * 1.15)
+  const newsvendorQ = liveData?.newsvendor_procure_q ?? Math.round(q50 + 0.5 * (q90 - q50))
+
+  // 3-Class Regime Matrix: Dip <=90 (per 300), Normal 91-209, Surge >=210
+  const dipLimit = selectedHostel === "Combined" ? 180 : 90
+  const surgeLimit = selectedHostel === "Combined" ? 420 : 210
+  const regimeClass = liveData?.regime_classification?.class ?? (
+    q50 <= dipLimit ? "Vacation Dip" : q50 >= surgeLimit ? "Peak Surge" : "Normal Service"
+  )
+  const regimeAction = liveData?.regime_classification?.action ?? (
+    q50 <= dipLimit
+      ? "Thermal burner shutdown; halt bulk cooking (F1 72.24%, eliminate food waste)"
+      : q50 >= surgeLimit
+      ? "Initiate secondary steam kettle cooking (F1 56.97%, 0 False Negative Surges)"
+      : "Standard single-batch staging line operation"
+  )
 
   const applyPreset = (preset: string) => {
     setActivePreset(preset)
     if (preset === "exam") {
-      setAdjustment(15)
+      setAdjustment(6) // Presentation: Exam multiplier = 1.06 (+6%)
       setEvent(false)
     } else if (preset === "diwali") {
-      setAdjustment(-75)
+      setAdjustment(-70) // Presentation: Hawkes shock a = 0.70 (-70%)
       setEvent(false)
     } else if (preset === "rain") {
-      setAdjustment(-10)
+      setAdjustment(selectedSlot === "breakfast" ? -18 : -4) // Weather multiplier: Rain breakfast 0.82 (-18%), Lunch 0.96 (-4%)
       setEvent(false)
     } else if (preset === "normal") {
       setAdjustment(0)
@@ -529,23 +1063,106 @@ function Forecast() {
     <>
       <div className="page-title-row">
         <div>
-          <Eyebrow>Planning intelligence</Eyebrow>
+          <Eyebrow>Planning intelligence · Minor Project Grounded</Eyebrow>
           <h1>Service demand planning & simulator</h1>
           <p>
-            Evaluate quantile regression bounds (q10, q50, q90) and simulate non-stationary institutional shocks.
+            Evaluate LightGBM quantile regression bounds (q10, q50, q75, q90) and simulate non-stationary institutional shocks.
           </p>
         </div>
-        <Button
-          variant="secondary"
-          icon={<RefreshCcw size={16} />}
-          onClick={() => {
-            setAdjustment(0)
-            setEvent(false)
-            setActivePreset("normal")
-          }}
-        >
-          Reset baseline
-        </Button>
+        <div style={{ display: "flex", gap: 10 }}>
+          <select
+            value={selectedHostel}
+            onChange={(e) => setSelectedHostel(e.target.value as any)}
+            style={{
+              background: "var(--paper)",
+              border: "1px solid var(--line)",
+              color: "var(--foreground)",
+              padding: "8px 12px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+            }}
+          >
+            <option value="Combined">Combined Mess (600 seats)</option>
+            <option value="BH-2">BH-2 Pure Veg (300 seats)</option>
+            <option value="BH-3">BH-3 Non-Veg (300 seats)</option>
+          </select>
+          <select
+            value={selectedSlot}
+            onChange={(e) => setSelectedSlot(e.target.value as any)}
+            style={{
+              background: "var(--paper)",
+              border: "1px solid var(--line)",
+              color: "var(--foreground)",
+              padding: "8px 12px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              textTransform: "capitalize",
+            }}
+          >
+            <option value="breakfast">Breakfast (42% base)</option>
+            <option value="lunch">Lunch (67% base)</option>
+            <option value="dinner">Dinner (76% base)</option>
+          </select>
+          <Button
+            variant="secondary"
+            icon={<RefreshCcw size={16} />}
+            onClick={() => {
+              setAdjustment(0)
+              setEvent(false)
+              setActivePreset("normal")
+            }}
+          >
+            Reset
+          </Button>
+        </div>
+      </div>
+
+      {/* Operational Regime Banner */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "14px 20px",
+          background: regimeClass === "Peak Surge"
+            ? "rgba(239, 68, 68, 0.1)"
+            : regimeClass === "Vacation Dip"
+            ? "rgba(59, 130, 246, 0.1)"
+            : "rgba(16, 185, 129, 0.1)",
+          border: `1px solid ${
+            regimeClass === "Peak Surge"
+              ? "rgba(239, 68, 68, 0.3)"
+              : regimeClass === "Vacation Dip"
+              ? "rgba(59, 130, 246, 0.3)"
+              : "rgba(16, 185, 129, 0.3)"
+          }`,
+          borderRadius: 12,
+          marginBottom: 20,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <StatusChip
+            tone={regimeClass === "Peak Surge" ? "danger" : regimeClass === "Vacation Dip" ? "neutral" : "good"}
+          >
+            {regimeClass.toUpperCase()}
+          </StatusChip>
+          <div>
+            <strong style={{ fontSize: 14 }}>{regimeClass}: {regimeAction}</strong>
+            <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+              {regimeClass === "Peak Surge"
+                ? "Surge criteria: Y ≥ 70% capacity (F1: 56.97% · 0 Critical False Negative Surges)"
+                : regimeClass === "Vacation Dip"
+                ? "Vacation Dip criteria: Y ≤ 30% capacity (F1: 72.24% · Halts bulk cooking)"
+                : "Normal operation: 30% < Y < 70% capacity (Single-batch prep)"}
+            </div>
+          </div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <span style={{ fontSize: 11, color: "var(--muted)", display: "block" }}>Newsvendor Rule A Target</span>
+          <strong style={{ fontSize: 16, color: "var(--foreground)" }}>{newsvendorQ} portions</strong>
+        </div>
       </div>
 
       {/* Quantile Output Row */}
@@ -558,18 +1175,23 @@ function Forecast() {
         <div className="quantile-card quantile-accent">
           <span>q50 · Median Target</span>
           <strong>{q50} covers</strong>
-          <small>Expected attendance for standard cooking</small>
+          <small>Expected attendance ({Math.round((q50 / capacity) * 100)}% utilization)</small>
         </div>
         <div className="quantile-card">
-          <span>q90 · Safety Buffer</span>
+          <span>q75 · Asymmetric Buffer</span>
+          <strong>{q75} covers</strong>
+          <small>Optimal fractile (τ*=0.75, +{Math.max(0, q75 - q50)} heads)</small>
+        </div>
+        <div className="quantile-card">
+          <span>q90 · Safety Ceiling</span>
           <strong>{q90} covers</strong>
-          <small>Zero-shortage guaranteed procurement ceiling</small>
+          <small>Zero-shortage guaranteed procurement</small>
         </div>
       </section>
 
       <section className="scenario-layout">
         <article className="ops-card scenario-controls">
-          <Eyebrow>Simulation Presets</Eyebrow>
+          <Eyebrow>Simulation Presets · Presentation Grounded</Eyebrow>
           <h2>Institutional Scenarios</h2>
 
           <div className="preset-grid">
@@ -577,29 +1199,29 @@ function Forecast() {
               className={`preset-chip ${activePreset === "normal" ? "is-active" : ""}`}
               onClick={() => applyPreset("normal")}
             >
-              <strong>Normal Weekday</strong>
-              <small>Standard term attendance</small>
+              <strong>Normal Academic Week</strong>
+              <small>Regular multiplier 1.00</small>
             </button>
             <button
               className={`preset-chip ${activePreset === "exam" ? "is-active" : ""}`}
               onClick={() => applyPreset("exam")}
             >
               <strong>Mid-Sem Exam Rush</strong>
-              <small>+15% high presence surge</small>
+              <small>+6% Academic multiplier (1.06)</small>
             </button>
             <button
               className={`preset-chip ${activePreset === "diwali" ? "is-active" : ""}`}
               onClick={() => applyPreset("diwali")}
             >
               <strong>Diwali Hawkes Exodus</strong>
-              <small>-75% mass departure collapse</small>
+              <small>-70% Hawkes shock (a=0.70, b=2.5d)</small>
             </button>
             <button
               className={`preset-chip ${activePreset === "rain" ? "is-active" : ""}`}
               onClick={() => applyPreset("rain")}
             >
               <strong>Monsoon Rainstorm</strong>
-              <small>-10% morning dip</small>
+              <small>{selectedSlot === "breakfast" ? "-18% Rain breakfast (0.82)" : "-4% Rain lunch (0.96)"}</small>
             </button>
           </div>
 
@@ -613,7 +1235,7 @@ function Forecast() {
           <input
             aria-label="Attendance adjustment"
             type="range"
-            min="-80"
+            min="-85"
             max="30"
             step="5"
             value={adjustment}
@@ -623,14 +1245,14 @@ function Forecast() {
             }}
           />
           <div className="range-bounds">
-            <span>−80% (Break)</span>
+            <span>−85% (End-Break 0.15)</span>
             <span>Baseline</span>
-            <span>+30% (Exam Surge)</span>
+            <span>+30% (Surge)</span>
           </div>
           <label className="toggle-row" style={{ marginTop: 14 }}>
             <span>
-              <strong>Campus Tech Event (Aparoksha)</strong>
-              <small>Adds an 8% attendance uplift</small>
+              <strong>Special Menu Feast Item</strong>
+              <small>Adds a +4% special pull factor</small>
             </span>
             <input
               type="checkbox"
@@ -644,10 +1266,10 @@ function Forecast() {
         <article className="ops-card scenario-chart">
           <div className="card-heading">
             <div>
-              <Eyebrow>Thursday · Lunch</Eyebrow>
-              <h2>Adjusted Demand Curve</h2>
+              <Eyebrow>{selectedHostel} · {selectedSlot.toUpperCase()}</Eyebrow>
+              <h2>Adjusted Demand & Batching Strategy</h2>
             </div>
-            <StatusChip tone={Math.abs(effectiveAdjustment) > 10 ? "warn" : "good"}>
+            <StatusChip tone={Math.abs(effectiveAdjustment) > 5 ? "warn" : "good"}>
               {effectiveAdjustment === 0 ? "Baseline Plan" : "Simulated Scenario"}
             </StatusChip>
           </div>
@@ -657,20 +1279,20 @@ function Forecast() {
               <Boxes size={19} />
               <span>Derived Raw Supply</span>
               <strong>
-                {Math.round(292 * (1 + effectiveAdjustment / 100))} kg
+                {Math.round(q50 * 0.565)} kg
               </strong>
             </div>
             <div>
               <Users size={19} />
               <span>Recommended Team</span>
               <strong>
-                {effectiveAdjustment > 10 ? 23 : effectiveAdjustment < -30 ? 12 : 20} staff
+                {q50 > 350 ? 22 : q50 < 150 ? 10 : 16} staff
               </strong>
             </div>
             <div>
               <Clock3 size={19} />
-              <span>Expected Peak</span>
-              <strong>13:15 – 13:45</strong>
+              <span>Batch 1 Cook / Reserve</span>
+              <strong>{Math.round(q50 * 0.70)} / {Math.max(0, newsvendorQ - Math.round(q50 * 0.70))}</strong>
             </div>
           </div>
         </article>
@@ -947,18 +1569,18 @@ function Waste() {
       </div>
       <section className="metric-grid waste-metrics">
         <Metric
-          label="Waste today"
-          value="19 kg"
-          detail="2.6% of prepared volume"
+          label="Buffer waste today"
+          value="33 kg"
+          detail="13.98% under Rule A (down from 26.7%)"
           accent
         />
         <Metric
           label="Avoided this week"
-          value="54 kg"
-          detail="vs heuristic guessing"
+          value="142 kg"
+          detail="vs heuristic guessing (Rule B)"
         />
-        <Metric label="Monthly saving" value="₹12,800" detail="Cost avoided" />
-        <Metric label="Model accuracy" value="96.4%" detail="+2.1 points gained" />
+        <Metric label="Monthly saving" value="₹24,800" detail="-52.1% loss reduction" />
+        <Metric label="Volume Error (WAPE)" value="25.95%" detail="MAE 41.54 heads (Benchmark Best)" />
       </section>
       <section className="waste-layout">
         <article className="ops-card waste-chart-card">
@@ -968,7 +1590,7 @@ function Waste() {
               <h2>Residual waste trend (kg)</h2>
             </div>
             <div className="trend-badge">
-              <ArrowDownRight size={16} /> −56%
+              <ArrowDownRight size={16} /> −52.1%
             </div>
           </div>
           <div className="waste-bars">
@@ -993,29 +1615,29 @@ function Waste() {
             <Utensils size={23} />
           </div>
           <div className="balance-figure">
-            <strong>97.4%</strong>
-            <span>of prepared food consumed</span>
+            <strong>86.0%</strong>
+            <span>consumed under Rule A (14.0% buffer vs 26.7% heuristic)</span>
           </div>
           <div className="balance-track">
-            <span />
+            <span style={{ width: "86.0%" }} />
           </div>
           <div className="balance-list">
             <div>
-              <span>Prepared</span>
-              <strong>746 kg</strong>
+              <span>Prepared (Rule A)</span>
+              <strong>412 portions (233 kg)</strong>
             </div>
             <div>
               <span>Served</span>
-              <strong>727 kg</strong>
+              <strong>354 portions (200 kg)</strong>
             </div>
             <div>
-              <span>Remaining</span>
-              <strong>19 kg</strong>
+              <span>Residual Buffer</span>
+              <strong>58 portions (33 kg)</strong>
             </div>
           </div>
           <div className="insight-strip">
             <Sparkles size={18} />
-            <p>Rice and breads account for 61% of remaining surplus volume.</p>
+            <p>Rice and breads account for 61% of remaining surplus volume. Shortage rate limited to 6.88%.</p>
           </div>
         </article>
       </section>
@@ -1051,7 +1673,7 @@ function Research() {
       <article className="ops-card table-card">
         <div className="card-heading">
           <div>
-            <Eyebrow>Empirical Comparison</Eyebrow>
+            <Eyebrow>Empirical Comparison · N = 612 Unseen Holdout Meals</Eyebrow>
             <h2>Model Evaluation Leaderboard</h2>
           </div>
           <StatusChip tone="good">72.4% PICP Coverage</StatusChip>
@@ -1092,6 +1714,178 @@ function Research() {
                   </td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+      {/* Asymmetric Newsvendor Procurement Comparison & Tolerances */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginTop: 24 }}>
+        <article className="ops-card">
+          <div className="card-heading">
+            <div>
+              <Eyebrow>[Arrow et al. 1951] Phase 5 Operations</Eyebrow>
+              <h2>Asymmetric Newsvendor Procurement</h2>
+            </div>
+            <StatusChip tone="good">-52.1% Cost Units</StatusChip>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
+            Penalty cost structure: C<sub>shortage</sub> = 3 (hunger/queues/contract penalties), C<sub>waste</sub> = 1 (spoilage).
+            Theoretical optimal fractile τ* = 3 / (3 + 1) = 0.75; empirical sweep minimum at γ* = 0.70.
+          </p>
+          <div className="data-table-wrap">
+            <table className="data-table" style={{ fontSize: 12 }}>
+              <thead>
+                <tr>
+                  <th>Procurement Strategy</th>
+                  <th>Procured</th>
+                  <th>Waste %</th>
+                  <th>Shortage %</th>
+                  <th>Total Cost</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr style={{ background: "rgba(16, 185, 129, 0.08)" }}>
+                  <td>
+                    <strong>{newsvendorSummary.ruleA.rule}</strong>
+                    <small>Proposed Quantile Blending</small>
+                  </td>
+                  <td>{newsvendorSummary.ruleA.totalProcured.toLocaleString()}</td>
+                  <td><strong>{newsvendorSummary.ruleA.wastePct}</strong></td>
+                  <td><strong style={{ color: "#10b981" }}>{newsvendorSummary.ruleA.shortageRatePct}</strong></td>
+                  <td><strong style={{ color: "#10b981" }}>{newsvendorSummary.ruleA.totalCostUnits.toLocaleString()} units (-52.1%)</strong></td>
+                </tr>
+                <tr>
+                  <td>
+                    <strong>{newsvendorSummary.ruleB.rule}</strong>
+                    <small>Naive Guesswork Baseline</small>
+                  </td>
+                  <td>{newsvendorSummary.ruleB.totalProcured.toLocaleString()}</td>
+                  <td>{newsvendorSummary.ruleB.wastePct}</td>
+                  <td><strong style={{ color: "#ef4444" }}>{newsvendorSummary.ruleB.shortageRatePct}</strong></td>
+                  <td><strong>{newsvendorSummary.ruleB.totalCostUnits.toLocaleString()} units</strong></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article className="ops-card">
+          <div className="card-heading">
+            <div>
+              <Eyebrow>Kitchen Operational Tolerances</Eyebrow>
+              <h2>Commercial Batch Margins</h2>
+            </div>
+            <StatusChip tone="good">N = 612 Unseen Meals</StatusChip>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
+            Standard commercial stainless steel catering pans hold ~35 portions. Landing within ±35 heads bounds error within one tray.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {cookingTolerances.map((tol) => (
+              <div
+                key={tol.band}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 14px",
+                  background: "var(--paper)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 10,
+                }}
+              >
+                <div>
+                  <strong style={{ fontSize: 13 }}>{tol.band}</strong>
+                  <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>{tol.operationalMeaning}</div>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: "#10b981" }}>{tol.coveragePct}</span>
+                  <div style={{ fontSize: 10, color: "var(--muted)" }}>empirical coverage</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+      </div>
+
+      {/* 3-Class Operational Regime Classification Confusion Matrix */}
+      <article className="ops-card table-card" style={{ marginTop: 24 }}>
+        <div className="card-heading">
+          <div>
+            <Eyebrow>Phase 6 · Safety-Critical Action Regimes</Eyebrow>
+            <h2>3-Class Operational Regime Matrix (N = 612 Meals)</h2>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <StatusChip tone="good">0 Critical False Negative Surges</StatusChip>
+            <StatusChip tone="good">64.5% Overall Accuracy</StatusChip>
+          </div>
+        </div>
+        <p style={{ fontSize: 12, color: "var(--muted)", marginBottom: 14 }}>
+          Converting continuous headcount into kitchen action regimes: Vacation Dip (Y ≤ 90), Normal Service (91–209), and Peak Surge (Y ≥ 210).
+          Out of 179 surge meals, exactly 0 surges were predicted as dips.
+        </p>
+        <div className="data-table-wrap">
+          <table className="data-table" style={{ fontSize: 12 }}>
+            <thead>
+              <tr>
+                <th>Actual \ Predicted</th>
+                <th>Pred Dip (≤90 Heads)</th>
+                <th>Pred Normal (91–209 Heads)</th>
+                <th>Pred Surge (≥210 Heads)</th>
+                <th>Total Actual</th>
+                <th>Category Performance</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Actual Vacation Dip (≤90)</strong></td>
+                <td style={{ background: "rgba(16, 185, 129, 0.12)" }}>
+                  <strong style={{ color: "#10b981" }}>95 (True Dip)</strong>
+                </td>
+                <td>54</td>
+                <td>1 (Extreme)</td>
+                <td><strong>150</strong></td>
+                <td>
+                  <span style={{ fontSize: 11 }}>F1: <strong>72.24%</strong> · Prec: 84.07% · Rec: 63.33%</span>
+                </td>
+              </tr>
+              <tr>
+                <td><strong>Actual Normal (91–209)</strong></td>
+                <td>18</td>
+                <td style={{ background: "rgba(16, 185, 129, 0.12)" }}>
+                  <strong style={{ color: "#10b981" }}>204 (True Normal)</strong>
+                </td>
+                <td>61</td>
+                <td><strong>283</strong></td>
+                <td>
+                  <span style={{ fontSize: 11 }}>Acc: <strong>88.07%</strong></span>
+                </td>
+              </tr>
+              <tr style={{ background: "rgba(239, 68, 68, 0.04)" }}>
+                <td><strong>Actual Peak Surge (≥210)</strong></td>
+                <td style={{ background: "rgba(16, 185, 129, 0.2)" }}>
+                  <strong style={{ color: "#10b981" }}>0 (Zero Shortage Error)</strong>
+                </td>
+                <td>83</td>
+                <td style={{ background: "rgba(16, 185, 129, 0.12)" }}>
+                  <strong style={{ color: "#10b981" }}>96 (True Surge)</strong>
+                </td>
+                <td><strong>179</strong></td>
+                <td>
+                  <span style={{ fontSize: 11 }}>F1: <strong>56.97%</strong> · Prec: 60.76% · Rec: 53.63%</span>
+                </td>
+              </tr>
+              <tr style={{ borderTop: "2px solid var(--line)" }}>
+                <td><strong>Total Predicted</strong></td>
+                <td><strong>113</strong></td>
+                <td><strong>341</strong></td>
+                <td><strong>158</strong></td>
+                <td><strong>612</strong></td>
+                <td>
+                  <strong>Overall Accuracy: 64.5% (395 / 612)</strong>
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -1318,8 +2112,11 @@ export default function OperationsConsole({
             </span>
           </div>
 
-          {/* Live Weather Widget for Prayagraj, UP */}
+          {/* Live Weather Widget & Prayagraj Time for Prayagraj, UP */}
           <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <div className="hidden lg:flex items-center">
+              <PrayagrajClockBadge variant="compact" />
+            </div>
             <WeatherWidget variant="header" />
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "rgba(255,255,255,0.8)" }}>
               <span>{activeVendor.name}</span>

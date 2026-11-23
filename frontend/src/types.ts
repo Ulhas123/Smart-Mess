@@ -1,5 +1,5 @@
 export type Role = "student" | "operations"
-export type MealPeriod = "Breakfast" | "Lunch" | "Snacks" | "Dinner"
+export type MealPeriod = "Breakfast" | "Lunch" | "Dinner"
 export type SessionStatus = "active" | "expired" | "ended"
 
 export type MealSession = {
@@ -37,6 +37,7 @@ export type MenuDay = {
       items: string[]
       tags: string[]
       allergen?: string
+      image?: string
     }
   >
 }
@@ -145,4 +146,92 @@ export type AttendanceScanResult = {
   reason: string
   id_card_data?: string
   claimed_at?: string
+}
+
+export type NewsvendorComparison = {
+  shortageCostPerHead: number
+  wasteCostPerHead: number
+  optimalFractile: number
+  empiricalGammaStar: number
+  ruleA: {
+    rule: string
+    totalServed: number
+    totalProcured: number
+    wasteHeads: number
+    shortageHeads: number
+    wastePct: string
+    shortageRatePct: string
+    totalCostUnits: number
+    costSavingPct: string
+  }
+  ruleB: {
+    rule: string
+    totalServed: number
+    totalProcured: number
+    wasteHeads: number
+    shortageHeads: number
+    wastePct: string
+    shortageRatePct: string
+    totalCostUnits: number
+  }
+}
+
+export type RegimeMatrixData = {
+  nMeals: number
+  thresholds: {
+    dipMax: number
+    normalMin: number
+    normalMax: number
+    surgeMin: number
+  }
+  matrix: {
+    actualDip: { predDip: number; predNormal: number; predSurge: number; total: number }
+    actualNormal: { predDip: number; predNormal: number; predSurge: number; total: number }
+    actualSurge: { predDip: number; predNormal: number; predSurge: number; total: number }
+    totalPred: { predDip: number; predNormal: number; predSurge: number; total: number }
+  }
+  surgeMetrics: {
+    accuracy: string
+    precision: string
+    recall: string
+    f1: string
+    falseNegativeSurges: number
+  }
+  dipMetrics: {
+    accuracy: string
+    precision: string
+    recall: string
+    f1: string
+  }
+  overallAccuracy: string
+}
+
+export type CookingTolerance = {
+  band: string
+  coveragePct: string
+  heads: number
+  operationalMeaning: string
+}
+
+export interface TestSeriesPoint {
+  date: string
+  display: string
+  phase: string
+  actual: number
+  forecast: number
+  point: number
+  q10: number
+  q90: number
+  error: number
+  within_25?: boolean
+  within_35?: boolean
+  within_50?: boolean
+}
+
+export interface IntradayDemandPoint {
+  time: string
+  forecast: number
+  actual: number
+  q10: number
+  q90: number
 }

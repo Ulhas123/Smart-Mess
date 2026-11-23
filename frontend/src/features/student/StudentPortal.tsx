@@ -44,11 +44,13 @@ import {
 } from "../../components/UI"
 import { QRCode } from "../../components/QRCode"
 import { WeatherWidget } from "../../components/WeatherWidget"
+import PrayagrajClockBadge from "../../components/agency/PrayagrajClockBadge"
 import {
   generateMealPass,
   fetchStudentHistory,
   submitFeedback,
 } from "../../services/api"
+import { getCurrentMealSlot } from "../../utils/time"
 
 type StudentPortalProps = {
   studentUser?: StudentUser
@@ -59,14 +61,10 @@ type StudentPortalProps = {
   onLogout?: () => void
 }
 
-const mealPeriods: MealPeriod[] = ["Breakfast", "Lunch", "Snacks", "Dinner"]
+const mealPeriods: MealPeriod[] = ["Breakfast", "Lunch", "Dinner"]
 
 function getCurrentSlot(): MealPeriod {
-  const h = new Date().getHours()
-  if (h >= 7 && h < 11) return "Breakfast"
-  if (h >= 11 && h < 16) return "Lunch"
-  if (h >= 16 && h < 18) return "Snacks"
-  return "Dinner"
+  return getCurrentMealSlot()
 }
 
 export default function StudentPortal({
@@ -226,7 +224,7 @@ export default function StudentPortal({
     menuDays[dayIndex]?.meals?.[selectedSlot] || menuDays[0].meals.Lunch
 
   return (
-    <div className="student-app" style={{ minHeight: "100vh", background: "var(--ivory)" }}>
+    <div className="student-app" style={{ minHeight: "100vh", background: "#09090b", color: "#f4f4f5" }}>
       {/* Top Header */}
       <header 
         className="student-header"
@@ -235,22 +233,26 @@ export default function StudentPortal({
           justifyContent: "space-between",
           alignItems: "center",
           padding: "16px 24px",
-          borderBottom: "1px solid var(--line)",
-          background: "var(--paper)",
+          borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
+          background: "rgba(18, 18, 20, 0.95)",
+          backdropFilter: "blur(18px)",
           flexWrap: "wrap",
           gap: 12
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <Brand />
-          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, background: "rgba(0,0,0,0.04)", padding: "4px 10px", borderRadius: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, background: "rgba(255, 255, 255, 0.08)", color: "#f4f4f5", padding: "4px 10px", borderRadius: 20, border: "1px solid rgba(255, 255, 255, 0.12)" }}>
             <span className="pulse-dot" />
             <span>Student Portal</span>
           </div>
         </div>
 
-        {/* Live Weather Widget for Prayagraj, UP */}
+        {/* Live Weather Widget & Prayagraj Time for Prayagraj, UP */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          <div className="hidden lg:flex items-center">
+            <PrayagrajClockBadge variant="compact" />
+          </div>
           <WeatherWidget variant="compact" />
 
           {/* Student Profile Pill */}
@@ -265,8 +267,9 @@ export default function StudentPortal({
                 gap: 8,
                 padding: "6px 12px",
                 borderRadius: 24,
-                border: "1px solid var(--line)",
-                background: "var(--paper)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                background: "#18181b",
+                color: "#ffffff",
                 cursor: "pointer"
               }}
             >
@@ -275,8 +278,8 @@ export default function StudentPortal({
                   width: 28,
                   height: 28,
                   borderRadius: "50%",
-                  background: "#0f172a",
-                  color: "#ffffff",
+                  background: "#ffffff",
+                  color: "#09090b",
                   display: "grid",
                   placeItems: "center",
                   fontSize: 11,
@@ -286,15 +289,15 @@ export default function StudentPortal({
                 {activeStudent.name.slice(0, 2).toUpperCase()}
               </div>
               <div style={{ textAlign: "left", lineHeight: 1.2 }}>
-                <strong style={{ fontSize: 13, display: "block" }}>{activeStudent.name}</strong>
-                <small style={{ fontSize: 10, color: "var(--muted)" }}>{activeStudent.roll} · {activeStudent.hostel}</small>
+                <strong style={{ fontSize: 13, display: "block", color: "#ffffff" }}>{activeStudent.name}</strong>
+                <small style={{ fontSize: 10, color: "#a1a1aa" }}>{activeStudent.roll} · {activeStudent.hostel}</small>
               </div>
             </button>
 
             <button
               onClick={onLogout || onSwitch}
               className="button button-ghost"
-              style={{ padding: "6px 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}
+              style={{ padding: "6px 10px", fontSize: 12, display: "flex", alignItems: "center", gap: 4, color: "#fb7185", background: "rgba(244, 63, 94, 0.08)", border: "1px solid rgba(244, 63, 94, 0.25)", borderRadius: 8 }}
               title="Sign Out of Student Account"
             >
               <LogOut size={14} />
@@ -315,9 +318,9 @@ export default function StudentPortal({
               style={{
                 padding: "8px 16px",
                 borderRadius: 10,
-                border: "none",
-                background: section === "today" ? "#0f172a" : "rgba(0,0,0,0.06)",
-                color: section === "today" ? "#ffffff" : "var(--ink)",
+                border: section === "today" ? "1px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.12)",
+                background: section === "today" ? "#ffffff" : "#18181b",
+                color: section === "today" ? "#09090b" : "#a1a1aa",
                 fontWeight: 600,
                 fontSize: 13,
                 cursor: "pointer",
@@ -335,9 +338,9 @@ export default function StudentPortal({
               style={{
                 padding: "8px 16px",
                 borderRadius: 10,
-                border: "none",
-                background: section === "menu" ? "#0f172a" : "rgba(0,0,0,0.06)",
-                color: section === "menu" ? "#ffffff" : "var(--ink)",
+                border: section === "menu" ? "1px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.12)",
+                background: section === "menu" ? "#ffffff" : "#18181b",
+                color: section === "menu" ? "#09090b" : "#a1a1aa",
                 fontWeight: 600,
                 fontSize: 13,
                 cursor: "pointer",
@@ -358,9 +361,9 @@ export default function StudentPortal({
               style={{
                 padding: "8px 16px",
                 borderRadius: 10,
-                border: "none",
-                background: section === "history" ? "#0f172a" : "rgba(0,0,0,0.06)",
-                color: section === "history" ? "#ffffff" : "var(--ink)",
+                border: section === "history" ? "1px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.12)",
+                background: section === "history" ? "#ffffff" : "#18181b",
+                color: section === "history" ? "#09090b" : "#a1a1aa",
                 fontWeight: 600,
                 fontSize: 13,
                 cursor: "pointer",
@@ -381,9 +384,9 @@ export default function StudentPortal({
               display: "flex",
               alignItems: "center",
               gap: 6,
-              background: "rgba(56, 189, 248, 0.1)",
+              background: "rgba(56, 189, 248, 0.12)",
               border: "1px solid rgba(56, 189, 248, 0.3)",
-              color: "#0284c7",
+              color: "#38bdf8",
               borderRadius: 8,
               padding: "6px 12px",
               fontSize: 12,
@@ -403,21 +406,21 @@ export default function StudentPortal({
             {!activeStudent.is_allowed ? (
               <div 
                 style={{
-                  background: "#fee2e2",
-                  border: "1px solid #ef4444",
+                  background: "rgba(244, 63, 94, 0.12)",
+                  border: "1px solid rgba(244, 63, 94, 0.3)",
                   borderRadius: 12,
                   padding: "16px 20px",
                   marginBottom: 24,
                   display: "flex",
                   alignItems: "center",
                   gap: 14,
-                  color: "#991b1b"
+                  color: "#fca5a5"
                 }}
               >
-                <ShieldAlert size={28} style={{ flexShrink: 0 }} />
+                <ShieldAlert size={28} style={{ flexShrink: 0, color: "#f43f5e" }} />
                 <div>
-                  <strong style={{ fontSize: 15, display: "block" }}>Mess Access Restricted (Not Allowed)</strong>
-                  <p style={{ fontSize: 13, margin: "2px 0 0" }}>
+                  <strong style={{ fontSize: 15, display: "block", color: "#ffffff" }}>Mess Access Restricted (Not Allowed)</strong>
+                  <p style={{ fontSize: 13, margin: "2px 0 0", color: "#fca5a5" }}>
                     Your student account is currently blocked from dining hall entry due to pending mess fee dues or unverified identity card. Please contact the warden's office.
                   </p>
                 </div>
@@ -425,25 +428,25 @@ export default function StudentPortal({
             ) : (
               <div 
                 style={{
-                  background: "#f0fdf4",
-                  border: "1px solid #bbf7d0",
+                  background: "rgba(16, 185, 129, 0.12)",
+                  border: "1px solid rgba(16, 185, 129, 0.3)",
                   borderRadius: 12,
                   padding: "12px 18px",
                   marginBottom: 24,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  color: "#166534",
+                  color: "#6ee7b7",
                   fontSize: 13
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <ShieldCheck size={20} style={{ color: "#16a34a" }} />
+                  <ShieldCheck size={20} style={{ color: "#34d399" }} />
                   <div>
-                    <strong>Authorized Mess Member</strong> · All service turnstiles active for {activeStudent.hostel}
+                    <strong style={{ color: "#ffffff" }}>Authorized Mess Member</strong> · All service turnstiles active for {activeStudent.hostel}
                   </div>
                 </div>
-                <span style={{ fontSize: 11, background: "#dcfce7", padding: "4px 8px", borderRadius: 6, fontWeight: 600 }}>
+                <span style={{ fontSize: 11, background: "rgba(16, 185, 129, 0.2)", border: "1px solid rgba(16, 185, 129, 0.4)", color: "#a7f3d0", padding: "4px 8px", borderRadius: 6, fontWeight: 600 }}>
                   Active Enrolled Resident
                 </span>
               </div>
@@ -475,18 +478,18 @@ export default function StudentPortal({
                       </p>
                     </div>
 
-                    <div style={{ display: "flex", gap: 4 }}>
+                    <div style={{ display: "flex", gap: 6 }}>
                       {mealPeriods.map((slot) => (
                         <button
                           key={slot}
                           onClick={() => setSelectedSlot(slot)}
                           style={{
-                            padding: "4px 8px",
+                            padding: "6px 12px",
                             fontSize: 11,
                             borderRadius: 6,
-                            border: "none",
-                            background: selectedSlot === slot ? "#0f172a" : "rgba(0,0,0,0.05)",
-                            color: selectedSlot === slot ? "#ffffff" : "var(--ink)",
+                            border: selectedSlot === slot ? "1px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.15)",
+                            background: selectedSlot === slot ? "#ffffff" : "#18181b",
+                            color: selectedSlot === slot ? "#09090b" : "#d4d4d8",
                             fontWeight: 600,
                             cursor: "pointer"
                           }}
@@ -500,33 +503,34 @@ export default function StudentPortal({
                   {/* QR Code Presentation Box */}
                   <div 
                     style={{
-                      background: "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
-                      border: "1px dashed rgba(0,0,0,0.15)",
+                      background: "#18181b",
+                      border: "1px dashed rgba(255,255,255,0.2)",
                       borderRadius: 14,
-                      padding: "20px",
+                      padding: "24px 20px",
                       display: "flex",
                       flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      textAlign: "center"
+                      textAlign: "center",
+                      color: "#f4f4f5"
                     }}
                   >
                     {activeStudent.is_allowed ? (
                       <>
-                        <div style={{ marginBottom: 12 }}>
+                        <div style={{ marginBottom: 14, background: "#ffffff", padding: 12, borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,0.5)" }}>
                           <QRCode 
                             value={qrString || `${activeStudent.roll}:${selectedSlot}`} 
                             size={180} 
                           />
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#15803d", fontWeight: 600, marginBottom: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#34d399", fontWeight: 600, marginBottom: 4 }}>
                           <CheckCircle2 size={16} />
                           <span>Pass Active for {selectedSlot}</span>
                         </div>
 
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                          Roll: <strong>{activeStudent.roll}</strong> · {activeStudent.name} ({activeStudent.hostel})
+                        <div style={{ fontSize: 11, color: "#d4d4d8" }}>
+                          Roll: <strong style={{ color: "#ffffff" }}>{activeStudent.roll}</strong> · {activeStudent.name} ({activeStudent.hostel})
                         </div>
 
                         <div 
@@ -535,37 +539,40 @@ export default function StudentPortal({
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 6,
-                            background: "rgba(0,0,0,0.06)",
-                            padding: "3px 10px",
+                            background: "rgba(255, 255, 255, 0.08)",
+                            border: "1px solid rgba(255, 255, 255, 0.12)",
+                            padding: "4px 12px",
                             borderRadius: 12,
                             fontSize: 11,
-                            fontFamily: "monospace"
+                            fontFamily: "monospace",
+                            color: "#d4d4d8"
                           }}
                         >
-                          <Clock3 size={12} />
+                          <Clock3 size={12} className="text-amber-400" />
                           <span>Session countdown: {formatTimer(passExpiryTimer)}</span>
                         </div>
 
                         {/* Quick action buttons for QR Pass */}
-                        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                        <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
                           <button
                             type="button"
                             onClick={downloadQrPass}
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: 4,
-                              background: "rgba(0,0,0,0.05)",
-                              border: "1px solid var(--line)",
+                              gap: 6,
+                              background: "rgba(255, 255, 255, 0.08)",
+                              border: "1px solid rgba(255, 255, 255, 0.18)",
+                              color: "#f4f4f5",
                               borderRadius: 6,
-                              padding: "4px 8px",
+                              padding: "6px 12px",
                               fontSize: 11,
                               fontWeight: 600,
                               cursor: "pointer"
                             }}
                             title="Download QR code image to upload into vendor turnstile scanner"
                           >
-                            <Download size={12} />
+                            <Download size={13} />
                             <span>Download Pass</span>
                           </button>
 
@@ -575,19 +582,19 @@ export default function StudentPortal({
                             style={{
                               display: "flex",
                               alignItems: "center",
-                              gap: 4,
-                              background: copiedToken ? "#dcfce7" : "rgba(0,0,0,0.05)",
-                              border: copiedToken ? "1px solid #86efac" : "1px solid var(--line)",
-                              color: copiedToken ? "#15803d" : "inherit",
+                              gap: 6,
+                              background: copiedToken ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.08)",
+                              border: copiedToken ? "1px solid rgba(16, 185, 129, 0.4)" : "1px solid rgba(255, 255, 255, 0.18)",
+                              color: copiedToken ? "#34d399" : "#f4f4f5",
                               borderRadius: 6,
-                              padding: "4px 8px",
+                              padding: "6px 12px",
                               fontSize: 11,
                               fontWeight: 600,
                               cursor: "pointer"
                             }}
                             title="Copy QR token string to paste into vendor scanner"
                           >
-                            <Check size={12} />
+                            <Check size={13} />
                             <span>{copiedToken ? "Copied!" : "Copy Token"}</span>
                           </button>
                         </div>
@@ -655,11 +662,11 @@ export default function StudentPortal({
 
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 8 }}>
                     <strong style={{ fontSize: 32, fontWeight: 700 }}>58%</strong>
-                    <span style={{ fontSize: 12, color: "var(--muted)" }}>290 of 500 seated</span>
+                    <span style={{ fontSize: 12, color: "var(--muted)" }}>174 of 300 seated</span>
                   </div>
 
-                  <div className="capacity-track" style={{ height: 6, background: "rgba(0,0,0,0.08)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
-                    <div style={{ width: "58%", height: "100%", background: "#0f172a", borderRadius: 3 }} />
+                  <div className="capacity-track" style={{ height: 6, background: "rgba(255, 255, 255, 0.1)", borderRadius: 3, overflow: "hidden", marginBottom: 12 }}>
+                    <div style={{ width: "58%", height: "100%", background: "#10b981", borderRadius: 3 }} />
                   </div>
 
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--muted)" }}>
@@ -687,7 +694,7 @@ export default function StudentPortal({
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
                 <div>
-                  <Eyebrow>Chef's Service</Eyebrow>
+                  <Eyebrow>Chef's Service · Live Menu</Eyebrow>
                   <h3 style={{ fontSize: 20, marginTop: 2 }}>Today's {selectedSlot} Menu</h3>
                 </div>
                 <button
@@ -695,7 +702,7 @@ export default function StudentPortal({
                   style={{
                     background: "none",
                     border: "none",
-                    color: "#0284c7",
+                    color: "#38bdf8",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -708,13 +715,84 @@ export default function StudentPortal({
                 </button>
               </div>
 
+              {/* Culinary Showcase Hero */}
+              <div 
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(200px, 280px) 1fr",
+                  gap: 20,
+                  alignItems: "stretch",
+                  marginBottom: 16,
+                  background: "#121214",
+                  borderRadius: 12,
+                  overflow: "hidden",
+                  border: "1px solid rgba(255, 255, 255, 0.1)"
+                }}
+                className="today-dish-hero"
+              >
+                <div style={{ position: "relative", minHeight: 180, overflow: "hidden" }}>
+                  <img 
+                    src={currentMenu.image || "/dishes/chole_bhature.jpg"} 
+                    alt={currentMenu.items[0]} 
+                    style={{ 
+                      width: "100%", 
+                      height: "100%", 
+                      objectFit: "cover",
+                      display: "block"
+                    }}
+                  />
+                  <div style={{
+                    position: "absolute",
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: "8px 12px",
+                    background: "linear-gradient(transparent, rgba(0,0,0,0.85))",
+                    fontSize: 11,
+                    fontFamily: "monospace",
+                    color: "#38bdf8",
+                    fontWeight: 600
+                  }}>
+                    OFFICIAL KMK GLOBAL SPEC
+                  </div>
+                </div>
+
+                <div style={{ padding: 18, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+                  <div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 8 }}>
+                      <span style={{ fontSize: 11, fontFamily: "monospace", color: "#d4af37", fontWeight: 700 }}>
+                        {selectedSlot.toUpperCase()} SPECIAL
+                      </span>
+                      {currentMenu.tags?.map((t) => (
+                        <StatusChip key={t} tone="good">{t}</StatusChip>
+                      ))}
+                    </div>
+                    <h4 style={{ fontSize: 18, fontWeight: 700, color: "#ffffff", marginBottom: 6 }}>
+                      {currentMenu.items[0]}
+                    </h4>
+                    <p style={{ fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                      Prepared fresh in {hostel} dining facility under IIIT Allahabad mess committee catering specifications.
+                    </p>
+                  </div>
+
+                  <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 16, fontSize: 11, color: "var(--muted)" }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <Clock3 size={13} color="#38bdf8" /> {currentMenu.time}
+                    </span>
+                    {currentMenu.allergen && (
+                      <span style={{ color: "#a1a1aa" }}>Allergens: {currentMenu.allergen}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                 {currentMenu.items.map((item, idx) => (
                   <div 
                     key={item}
                     style={{
-                      background: "rgba(0,0,0,0.02)",
-                      border: "1px solid var(--line)",
+                      background: "#18181b",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
                       borderRadius: 10,
                       padding: "12px 14px",
                       display: "flex",
@@ -722,8 +800,8 @@ export default function StudentPortal({
                       gap: 10
                     }}
                   >
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)" }}>0{idx + 1}</span>
-                    <strong style={{ fontSize: 13 }}>{item}</strong>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#d4af37", fontFamily: "monospace" }}>0{idx + 1}</span>
+                    <strong style={{ fontSize: 13, color: "#ffffff" }}>{item}</strong>
                   </div>
                 ))}
               </div>
@@ -781,7 +859,9 @@ export default function StudentPortal({
                       flex: 1,
                       padding: "10px 14px",
                       borderRadius: 8,
-                      border: "1px solid var(--line)",
+                      border: "1px solid rgba(255, 255, 255, 0.15)",
+                      background: "#18181b",
+                      color: "#f4f4f5",
                       fontSize: 13,
                       outline: "none"
                     }}
@@ -814,9 +894,9 @@ export default function StudentPortal({
                   style={{
                     padding: "8px 16px",
                     borderRadius: 10,
-                    border: "none",
-                    background: dayIndex === idx ? "#0f172a" : "rgba(0,0,0,0.05)",
-                    color: dayIndex === idx ? "#ffffff" : "var(--ink)",
+                    border: dayIndex === idx ? "1px solid #ffffff" : "1px solid rgba(255, 255, 255, 0.15)",
+                    background: dayIndex === idx ? "#ffffff" : "#18181b",
+                    color: dayIndex === idx ? "#09090b" : "#d4d4d8",
                     fontWeight: 600,
                     fontSize: 13,
                     cursor: "pointer",
@@ -824,7 +904,7 @@ export default function StudentPortal({
                   }}
                 >
                   <div style={{ fontSize: 13 }}>{day.day}</div>
-                  <div style={{ fontSize: 10, opacity: 0.7 }}>{day.date}</div>
+                  <div style={{ fontSize: 10, opacity: 0.8 }}>{day.date}</div>
                 </button>
               ))}
             </div>
@@ -836,19 +916,67 @@ export default function StudentPortal({
             />
 
             <div style={{ marginTop: 20 }}>
+              {/* Featured dish hero for selected day & slot */}
+              {currentMenu.image && (
+                <div 
+                  style={{ 
+                    marginBottom: 16, 
+                    borderRadius: 12, 
+                    overflow: "hidden", 
+                    border: "1px solid rgba(255, 255, 255, 0.12)",
+                    display: "flex",
+                    alignItems: "center",
+                    background: "#18181b"
+                  }}
+                  className="week-dish-hero"
+                >
+                  <div style={{ width: 220, height: 130, flexShrink: 0, position: "relative" }}>
+                    <img 
+                      src={currentMenu.image} 
+                      alt={currentMenu.items[0]} 
+                      style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} 
+                    />
+                    <div style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      padding: "4px 8px",
+                      background: "rgba(0,0,0,0.75)",
+                      fontSize: 10,
+                      fontFamily: "monospace",
+                      color: "#38bdf8"
+                    }}>
+                      AUTHENTIC ITEM PHOTO
+                    </div>
+                  </div>
+                  <div style={{ padding: "12px 18px", flex: 1 }}>
+                    <div style={{ fontSize: 11, fontFamily: "monospace", color: "#38bdf8", fontWeight: 700 }}>
+                      FEATURED ITEM · {selectedSlot.toUpperCase()}
+                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 700, color: "#ffffff", marginTop: 2 }}>
+                      {currentMenu.items[0]}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#a1a1aa", marginTop: 4 }}>
+                      Scheduled Service Window: <strong style={{ color: "#ffffff" }}>{currentMenu.time}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
                 {currentMenu.items.map((item, idx) => (
                   <div 
                     key={item}
                     style={{
-                      background: "rgba(0,0,0,0.02)",
-                      border: "1px solid var(--line)",
+                      background: "#18181b",
+                      border: "1px solid rgba(255, 255, 255, 0.12)",
                       borderRadius: 10,
                       padding: 14
                     }}
                   >
-                    <span style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700 }}>ITEM 0{idx + 1}</span>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4 }}>{item}</div>
+                    <span style={{ fontSize: 11, color: "#d4af37", fontWeight: 700, fontFamily: "monospace" }}>ITEM 0{idx + 1}</span>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginTop: 4, color: "#ffffff" }}>{item}</div>
                   </div>
                 ))}
               </div>
@@ -915,16 +1043,17 @@ export default function StudentPortal({
                   </thead>
                   <tbody>
                     {historyRecords.map((r) => (
-                      <tr key={r.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-                        <td style={{ padding: 12, fontWeight: 500 }}>{r.date}</td>
-                        <td style={{ padding: 12, fontWeight: 600 }}>{r.slot}</td>
-                        <td style={{ padding: 12, color: "var(--muted)" }}>{r.timestamp}</td>
-                        <td style={{ padding: 12 }}>{r.hostel}</td>
+                      <tr key={r.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+                        <td style={{ padding: 12, fontWeight: 500, color: "#ffffff" }}>{r.date}</td>
+                        <td style={{ padding: 12, fontWeight: 600, color: "#ffffff" }}>{r.slot}</td>
+                        <td style={{ padding: 12, color: "#a1a1aa", fontFamily: "monospace" }}>{r.timestamp}</td>
+                        <td style={{ padding: 12, color: "#d4d4d8" }}>{r.hostel}</td>
                         <td style={{ padding: 12 }}>
                           <span 
                             style={{
-                              background: r.status === "APPROVED" ? "#dcfce7" : "#fee2e2",
-                              color: r.status === "APPROVED" ? "#166534" : "#991b1b",
+                              background: r.status === "APPROVED" ? "rgba(16, 185, 129, 0.15)" : "rgba(244, 63, 94, 0.15)",
+                              color: r.status === "APPROVED" ? "#34d399" : "#fb7185",
+                              border: r.status === "APPROVED" ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(244, 63, 94, 0.3)",
                               padding: "4px 8px",
                               borderRadius: 6,
                               fontSize: 11,

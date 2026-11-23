@@ -19,13 +19,13 @@ export default function ResearchShowcaseView() {
   const [selectedPlot, setSelectedPlot] = useState(null);
 
   const benchmarks = [
-    { name: 'LightGBM (All Features)', mae: '41.54', rmse: '53.23', mape: '32.14%', wape: '25.95%', picp: '72.4%', speed: '0.4 ms', tag: 'Best Overall' },
-    { name: 'LightGBM (No Weather Ablation)', mae: '41.67', rmse: '53.33', mape: '32.08%', wape: '26.03%', picp: '72.1%', speed: '0.4 ms', tag: 'Ablation' },
-    { name: 'LightGBM (No Calendar Ablation)', mae: '47.28', rmse: '60.89', mape: '38.09%', wape: '29.54%', picp: '68.3%', speed: '0.3 ms', tag: '+5.74 MAE' },
-    { name: 'LightGBM Asymmetric (q75 Target)', mae: '48.54', rmse: '61.49', mape: '44.32%', wape: '30.33%', picp: '84.2%', speed: '0.4 ms', tag: 'Zero Shortage' },
+    { name: 'LightGBM (All Features)', mae: '41.54', rmse: '53.23', mape: '32.14%', wape: '25.95%', picp: '72.4%', speed: '0.8 ms', tag: 'Best Overall' },
+    { name: 'LightGBM (No Weather Ablation)', mae: '41.67', rmse: '53.33', mape: '32.08%', wape: '26.03%', picp: '72.1%', speed: '0.8 ms', tag: 'Ablation' },
+    { name: 'LightGBM (No Calendar Ablation)', mae: '47.28', rmse: '60.89', mape: '38.09%', wape: '29.54%', picp: '68.3%', speed: '0.7 ms', tag: '+5.74 MAE' },
+    { name: 'LightGBM Asymmetric (q75 Target)', mae: '48.54', rmse: '61.49', mape: '44.32%', wape: '30.33%', picp: '84.2%', speed: '0.8 ms', tag: 'Zero Shortage' },
     { name: 'Seasonal-Naive Baseline', mae: '68.20', rmse: '85.77', mape: '65.57%', wape: '42.61%', picp: '—', speed: '0.1 ms', tag: 'Baseline' },
-    { name: 'Holt-Winters Smoothing', mae: '69.56', rmse: '83.47', mape: '58.16%', wape: '33.58%', picp: '—', speed: '12.3 ms', tag: 'Classical' },
-    { name: 'SARIMA (2,1,1)(1,1,1)', mae: '72.88', rmse: '86.01', mape: '58.93%', wape: '35.18%', picp: '—', speed: '145.0 ms', tag: 'Classical' },
+    { name: 'Holt-Winters (BH2-dinner)', mae: '69.56', rmse: '83.47', mape: '58.16%', wape: '33.58%', picp: '—', speed: '15.2 ms', tag: 'Classical' },
+    { name: 'SARIMA (BH2-dinner)', mae: '72.88', rmse: '86.01', mape: '58.93%', wape: '35.18%', picp: '—', speed: '12.4 s', tag: 'Classical' },
   ];
 
   const researchPlots = [
@@ -255,6 +255,176 @@ export default function ResearchShowcaseView() {
                   <td className="py-3.5 font-mono text-slate-500">{row.speed}</td>
                 </tr>
               ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Operations Simulation: Asymmetric Newsvendor & Cooking Tolerances */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="glass-panel p-6 border-t-4 border-t-emerald-500">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                [Arrow et al. 1951] Phase 5 Operations
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                Asymmetric Newsvendor Economic Impact
+              </h3>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              -52.1% Cost Reduction
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Cost structure: C<sub>shortage</sub> = 3 (hunger & contract penalties), C<sub>waste</sub> = 1 (food loss).
+            Theoretical critical fractile τ* = 3 / (3 + 1) = 0.75; empirical sweep minimum at γ* = 0.70.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase font-semibold">
+                  <th className="pb-2">Rule</th>
+                  <th className="pb-2">Procured</th>
+                  <th className="pb-2">Waste %</th>
+                  <th className="pb-2">Shortage %</th>
+                  <th className="pb-2">Total Cost</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tr className="bg-emerald-50/50 dark:bg-emerald-950/20 font-semibold">
+                  <td className="py-2.5 text-slate-900 dark:text-white">Rule A (Quantile Blend)</td>
+                  <td className="py-2.5 font-mono">114,129</td>
+                  <td className="py-2.5 font-mono text-emerald-600 dark:text-emerald-400">20.08%</td>
+                  <td className="py-2.5 font-mono text-emerald-600 dark:text-emerald-400">6.88%</td>
+                  <td className="py-2.5 font-mono font-bold text-emerald-600 dark:text-emerald-400">43,138 (-52.1%)</td>
+                </tr>
+                <tr>
+                  <td className="py-2.5 text-slate-700 dark:text-slate-300">Rule B (Last Week + 10%)</td>
+                  <td className="py-2.5 font-mono">105,436</td>
+                  <td className="py-2.5 font-mono">26.66%</td>
+                  <td className="py-2.5 font-mono text-rose-600 dark:text-rose-400">21.06%</td>
+                  <td className="py-2.5 font-mono text-slate-600 dark:text-slate-400">89,997</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="glass-panel p-6 border-t-4 border-t-cyan-500">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-xs font-mono font-bold text-cyan-600 dark:text-cyan-400 uppercase tracking-wider block">
+                Commercial Kitchen Preparation Bounds
+              </span>
+              <h3 className="text-base font-bold text-slate-900 dark:text-white mt-1">
+                Batch Cooking Tolerance Margins
+              </h3>
+            </div>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-cyan-100 text-cyan-800 dark:bg-cyan-950 dark:text-cyan-300">
+              N = 612 Holdout Meals
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 mb-4">
+            Commercial stainless steel food pans hold ~35 portions. Landing within ±35 heads guarantees batch accuracy within one serving tray.
+          </p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <div>
+                <strong className="text-xs text-slate-900 dark:text-white">Within ±25 Portions</strong>
+                <span className="text-[11px] text-slate-500 block">Strict narrow batch cooking limit</span>
+              </div>
+              <span className="font-mono text-sm font-bold text-cyan-600 dark:text-cyan-400">38.56%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <div>
+                <strong className="text-xs text-slate-900 dark:text-white">Within ±35 Portions</strong>
+                <span className="text-[11px] text-slate-500 block">Single commercial tray boundary</span>
+              </div>
+              <span className="font-mono text-sm font-bold text-emerald-600 dark:text-emerald-400">50.33%</span>
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+              <div>
+                <strong className="text-xs text-slate-900 dark:text-white">Within ±50 Portions</strong>
+                <span className="text-[11px] text-slate-500 block">Over two-thirds of holdout meals bounded</span>
+              </div>
+              <span className="font-mono text-sm font-bold text-indigo-600 dark:text-indigo-400">66.99%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 3-Class Operational Regime Classification Matrix */}
+      <div className="glass-panel p-6 border-t-4 border-t-amber-500">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                Phase 6 Safety Operations
+              </span>
+            </div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white mt-0.5">
+              3-Class Operational Action Confusion Matrix (N = 612 Meals)
+            </h3>
+            <p className="text-xs text-slate-500 mt-1">
+              Converting continuous predictions into kitchen decisions: Dip (≤90), Normal (91–209), and Surge (≥210).
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+              0 Critical False Negative Surges
+            </span>
+            <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+              64.5% Accuracy
+            </span>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-400 uppercase font-semibold">
+                <th className="pb-3">Actual \ Predicted</th>
+                <th className="pb-3">Pred Dip (≤90 Heads)</th>
+                <th className="pb-3">Pred Normal (91–209)</th>
+                <th className="pb-3">Pred Surge (≥210 Heads)</th>
+                <th className="pb-3">Total Actual</th>
+                <th className="pb-3">Category Telemetry</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tr>
+                <td className="py-3 font-semibold text-slate-900 dark:text-white">Actual Vacation Dip (≤90)</td>
+                <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20">95 (True Dip)</td>
+                <td className="py-3 font-mono">54</td>
+                <td className="py-3 font-mono">1</td>
+                <td className="py-3 font-mono font-semibold">150</td>
+                <td className="py-3 text-slate-500 font-mono text-[11px]">Dip F1: 72.24% · Prec: 84.07% · Rec: 63.33%</td>
+              </tr>
+              <tr>
+                <td className="py-3 font-semibold text-slate-900 dark:text-white">Actual Normal (91–209)</td>
+                <td className="py-3 font-mono">18</td>
+                <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20">204 (True Normal)</td>
+                <td className="py-3 font-mono">61</td>
+                <td className="py-3 font-mono font-semibold">283</td>
+                <td className="py-3 text-slate-500 font-mono text-[11px]">Normal Baseline Security</td>
+              </tr>
+              <tr className="bg-rose-50/20 dark:bg-rose-950/10">
+                <td className="py-3 font-semibold text-slate-900 dark:text-white">Actual Peak Surge (≥210)</td>
+                <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-950/50">0 (Zero Shortage)</td>
+                <td className="py-3 font-mono">83</td>
+                <td className="py-3 font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/20">96 (True Surge)</td>
+                <td className="py-3 font-mono font-semibold">179</td>
+                <td className="py-3 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] font-bold">Surge F1: 56.97% · 0 Blindside Surges</td>
+              </tr>
+              <tr className="border-t-2 border-slate-300 dark:border-slate-700 font-bold">
+                <td className="py-3 text-slate-900 dark:text-white">Total Predicted</td>
+                <td className="py-3 font-mono">113</td>
+                <td className="py-3 font-mono">341</td>
+                <td className="py-3 font-mono">158</td>
+                <td className="py-3 font-mono">612</td>
+                <td className="py-3 text-slate-700 dark:text-slate-300 font-mono">395/612 Exact Decisions (64.5%)</td>
+              </tr>
             </tbody>
           </table>
         </div>

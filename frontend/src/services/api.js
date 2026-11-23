@@ -27,11 +27,28 @@ const STORAGE_STUDENTS = "iiita_mess_students_db";
 const STORAGE_ATTENDANCE = "iiita_mess_attendance_db";
 
 function getCurrentSlotClient() {
-  const hour = new Date().getHours();
-  if (hour >= 6 && hour < 11) return "Breakfast";
-  if (hour >= 11 && hour < 16) return "Lunch";
-  if (hour >= 16 && hour < 19) return "Snacks";
-  return "Dinner";
+  try {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Kolkata",
+      hour: "numeric",
+      minute: "numeric",
+      hour12: false,
+    }).formatToParts(new Date());
+    let hour = 0, minute = 0;
+    for (const p of parts) {
+      if (p.type === "hour") hour = parseInt(p.value, 10) % 24;
+      if (p.type === "minute") minute = parseInt(p.value, 10);
+    }
+    const total = hour * 60 + minute;
+    if (total < 630) return "Breakfast";
+    if (total < 960) return "Lunch";
+    return "Dinner";
+  } catch (e) {
+    const hour = new Date().getHours();
+    if (hour < 11) return "Breakfast";
+    if (hour < 16) return "Lunch";
+    return "Dinner";
+  }
 }
 
 let _memoryStudents = null;
@@ -746,6 +763,20 @@ export async function fetchHealth() {
   };
 }
 
+export async function fetchTestSeries(hostel = "BH-2", slot = "dinner", limit = 21) {
+  try {
+    const res = await fetch(`${API_BASE}/forecast/test-series?hostel=${encodeURIComponent(hostel)}&slot=${encodeURIComponent(slot)}&limit=${limit}`, {
+      signal: AbortSignal.timeout(6000),
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {
+    console.warn("Using offline test series fallback", e);
+  }
+  return null;
+}
+
 export async function fetchForecast(params) {
   try {
     const res = await fetch(`${API_BASE}/forecast`, {
@@ -1095,22 +1126,22 @@ export async function fetchMenu() {
   }
   return {
     "BH-2": [
-      { day: "Monday", breakfast: "Poha, Jalebi, Tea/Milk", lunch: "Rajma, Rice, Chapati, Mixed Veg, Salad", dinner: "Paneer Butter Masala, Dal Makhani, Jeera Rice, Gulab Jamun", has_dessert: true, is_special: true },
-      { day: "Tuesday", breakfast: "Aloo Paratha, Curd, Pickle, Tea", lunch: "Kadhi Pakora, Steamed Rice, Aloo Gobi, Chapati", dinner: "Matar Paneer, Yellow Dal, Chapati, Rice, Kheer", has_dessert: true, is_special: false },
-      { day: "Wednesday", breakfast: "Idli Sambar, Coconut Chutney, Tea", lunch: "Chole Bhature, Pulao, Boondi Raita, Onion Salad", dinner: "Mix Veg Curry, Dal Tadka, Chapati, Rice, Custard", is_fast_food: true, has_dessert: true },
-      { day: "Thursday", breakfast: "Veg Upma, Banana, Tea/Coffee", lunch: "Black Chana Masala, Rice, Bhindi Do Pyaza, Chapati", dinner: "Shahi Paneer, Dal Fry, Naan/Chapati, Pulao, Ice Cream", is_special: true, has_dessert: true },
-      { day: "Friday", breakfast: "Puri Sabzi, Halwa, Tea", lunch: "Dal Makhani, Rice, Chapati, Aloo Jeera, Salad", dinner: "Dum Aloo Kashmiri, Dal Tadka, Tandoori Roti, Pulao, Rasgulla", has_dessert: true },
-      { day: "Saturday", breakfast: "Masala Dosa, Sambhar, Chutney", lunch: "Kashmiri Pulao, Paneer Bhurji, Dal, Chapati", dinner: "Veg Biryani, Mirchi Ka Salan, Raita, Rasmalai", is_fast_food: true, is_special: true, has_dessert: true },
-      { day: "Sunday", breakfast: "Pav Bhaji, Boiled Egg/Sprouts, Tea", lunch: "Special Thali: Paneer Lababdar, Dal Tadka, Puri, Pulao, Sweet", dinner: "Aloo Matar, Dal Fry, Rice, Chapati, Fruit Salad", is_fast_food: true, is_special: true },
+      { day: "Monday", breakfast: "Chola samosa, meethi & hari chutney, dalia, bread, butter, jam, banana, tea/coffee/milk", lunch: "Punjabi kadhi-pakode, aloo-shimlamirch, pineapple raita, jeera rice, roti, salad, mix achaar", dinner: "Kadhai paneer, moong daal, rice, roti, gulab jamun, salad, mix achaar", has_dessert: true, is_special: true, is_fast_food: true },
+      { day: "Tuesday", breakfast: "Uttapam, sambhar, coconut chutney, cornflakes, bread, butter, jam, banana, tea/coffee/milk", lunch: "Litti chokha, arhar daal, rice, lassi, sambhar, salad, mix achaar", dinner: "Veg kofta curry, arhar daal tadka, rice, roti, fruit custard, salad, mix achaar", has_dessert: true, is_special: true, is_fast_food: true },
+      { day: "Wednesday", breakfast: "Pav bhaji, dalia, sprouts, bread, butter, jam, banana, tea/coffee/milk", lunch: "Kali masoor daal, kaddu sabzi, dahi, rice, puri, sambhar, salad, mix achaar", dinner: "Chana masala, roti, arhar daal, veg fried rice, sooji halwa, salad, mix achaar", has_dessert: true, is_special: false, is_fast_food: true },
+      { day: "Thursday", breakfast: "Medu vada, sambhar, coconut chutney, cornflakes, bread, butter, jam, banana, tea/coffee/milk", lunch: "Safed matar masala, dal makhni, veg pulao, chaach, sambhar, roti, salad, mix achaar", dinner: "Aloo-pattagobhi, roti, rajma, rice, milk cake, salad, mix achaar", is_special: true, has_dessert: true },
+      { day: "Friday", breakfast: "Poha + Haldiram bhujiya, jalebi, dalia, bread, butter, jam, banana, tea/coffee/milk", lunch: "Aloo bhujiya, chana daal tadka, rice, roti, dahi, salad, mix achaar", dinner: "Paneer-pyaaz paratha, chutney, daal, rice, kaju katli, salad, mix achaar", has_dessert: true, is_special: true },
+      { day: "Saturday", breakfast: "Masala dosa, sambhar, coconut chutney, cornflakes, bread, butter, jam, banana, tea/coffee/milk", lunch: "Chole bhature, rice, boondi raita, sambhar, salad, mix achaar", dinner: "Soyabean-aloo, arhar dal tadka, veg pulao, roti, ice cream, salad, mix achaar", is_fast_food: true, is_special: true, has_dessert: true },
+      { day: "Sunday", breakfast: "Aloo-pyaaz paratha, dahi, chutney, cornflakes, bread, butter, jam, banana, tea/coffee/milk", lunch: "Aloo jhol, arhar dal tadka, mix-veg raita, veg biryani, roti, salad, mix achaar", dinner: "Pasta / chowmein, veg manchurian, mix daal, rice, roti, sewai, salad, mix achaar", is_fast_food: true, is_special: true, has_dessert: true },
     ],
     "BH-3": [
-      { day: "Monday", breakfast: "Poha, Boiled Eggs / Banana, Tea", lunch: "Rajma Masala, Rice, Chapati, Seasonal Veg", dinner: "Chicken Curry / Paneer Butter Masala, Dal Makhani, Jeera Rice, Gulab Jamun", has_nonveg: true, has_dessert: true, is_special: true },
-      { day: "Tuesday", breakfast: "Egg Bhurji / Aloo Paratha, Curd, Tea", lunch: "Kadhi Pakora, Steamed Rice, Aloo Gobi, Chapati", dinner: "Matar Paneer, Yellow Dal, Chapati, Rice, Kheer", has_dessert: true },
-      { day: "Wednesday", breakfast: "Idli Sambar, Omelette / Coconut Chutney, Tea", lunch: "Chole Bhature, Pulao, Boondi Raita, Salad", dinner: "Mix Veg Curry, Dal Tadka, Chapati, Rice, Custard", is_fast_food: true, has_dessert: true },
-      { day: "Thursday", breakfast: "Bread Omelette / Veg Sandwich, Tea", lunch: "Egg Curry / Black Chana, Rice, Bhindi Masala, Chapati", dinner: "Shahi Paneer, Dal Fry, Chapati, Pulao, Ice Cream", has_nonveg: true, has_dessert: true },
-      { day: "Friday", breakfast: "Puri Sabzi, Halwa, Tea", lunch: "Dal Makhani, Rice, Chapati, Aloo Jeera, Salad", dinner: "Hyderabadi Chicken Biryani / Veg Biryani, Mirchi Ka Salan, Raita, Rasgulla", has_nonveg: true, is_special: true, has_dessert: true },
-      { day: "Saturday", breakfast: "Masala Dosa, Sambhar, Chutney", lunch: "Egg Fried Rice / Veg Pulao, Dal, Chapati", dinner: "Veg Kolhapuri, Dal Tadka, Chapati, Pulao, Sweet", is_fast_food: true },
-      { day: "Sunday", breakfast: "Egg Roll / Pav Bhaji, Tea", lunch: "Sunday Feast: Chicken Roast / Paneer Lababdar, Pulao, Puri, Ice Cream", dinner: "Light Khichdi / Aloo Matar, Curd, Chapati", has_nonveg: true, is_special: true, has_dessert: true },
+      { day: "Monday", breakfast: "Chola samosa, meethi & hari chutney, dalia, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Punjabi kadhi-pakode, aloo-shimlamirch, pineapple raita, jeera rice, roti, salad, mix achaar", dinner: "Egg curry / Kadhai paneer, moong daal, rice, roti, gulab jamun, salad, mix achaar", has_nonveg: true, has_dessert: true, is_special: true, is_fast_food: true },
+      { day: "Tuesday", breakfast: "Uttapam, sambhar, coconut chutney, cornflakes, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Litti chokha, arhar daal, rice, lassi, sambhar, salad, mix achaar", dinner: "Veg kofta curry, arhar daal tadka, rice, roti, fruit custard, salad, mix achaar", has_dessert: true, is_special: true, is_fast_food: true },
+      { day: "Wednesday", breakfast: "Pav bhaji, dalia, sprouts, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Kali masoor daal, kaddu sabzi, dahi, rice, puri, sambhar, salad, mix achaar", dinner: "Chana masala, roti, arhar daal, veg fried rice, sooji halwa, salad, mix achaar", has_dessert: true, is_special: false, is_fast_food: true },
+      { day: "Thursday", breakfast: "Medu vada, sambhar, coconut chutney, cornflakes, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Safed matar masala, dal makhni, veg pulao, chaach, sambhar, roti, salad, mix achaar", dinner: "Aloo-pattagobhi, roti, rajma, rice, milk cake, salad, mix achaar", has_dessert: true, is_special: true },
+      { day: "Friday", breakfast: "Poha + Haldiram bhujiya, jalebi, dalia, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Aloo bhujiya, chana daal tadka, rice, roti, dahi, salad, mix achaar", dinner: "(Chicken curry, roti) / (Paneer-pyaaz paratha, chutney, daal), rice, kaju katli, salad, mix achaar", has_nonveg: true, is_special: true, has_dessert: true },
+      { day: "Saturday", breakfast: "Masala dosa, sambhar, coconut chutney, cornflakes, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Chole bhature, rice, boondi raita, sambhar, salad, mix achaar", dinner: "Soyabean-aloo, arhar dal tadka, veg pulao, roti, ice cream, salad, mix achaar", is_fast_food: true, is_special: true, has_dessert: true },
+      { day: "Sunday", breakfast: "Aloo-pyaaz paratha, dahi, chutney, cornflakes, bread, butter, jam, egg/banana, tea/coffee/milk", lunch: "Aloo jhol, arhar dal tadka, mix-veg raita, veg biryani, roti, salad, mix achaar", dinner: "Pasta / chowmein, veg manchurian, mix daal, rice, roti, sewai, salad, mix achaar", has_dessert: true, is_fast_food: true, is_special: true },
     ],
   };
 }

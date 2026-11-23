@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 from typing import Dict, Any
+from backend.time_utils import get_ist_now, get_ist_date_str, get_ist_time_str
 
 try:
     import httpx
@@ -52,7 +53,7 @@ CACHE_TTL_SECONDS = 600  # 10 minutes cache
 
 def _fallback_weather() -> Dict[str, Any]:
     """Reliable fallback if external network is unavailable."""
-    now = datetime.now()
+    now = get_ist_now()
     return {
         "city": "Prayagraj",
         "state": "Uttar Pradesh",
@@ -71,7 +72,7 @@ def _fallback_weather() -> Dict[str, Any]:
         "temp_max": 28.0,
         "temp_min": 17.0,
         "source": "Open-Meteo (Cached/Standard Model)",
-        "updated_at": now.strftime("%Y-%m-%d %H:%M:%S IST")
+        "updated_at": f"{get_ist_date_str(now)} {get_ist_time_str(now)} IST"
     }
 
 def get_prayagraj_weather(force_refresh: bool = False) -> Dict[str, Any]:
@@ -123,7 +124,7 @@ def get_prayagraj_weather(force_refresh: bool = False) -> Dict[str, Any]:
                     "temp_max": round(float(temp_max), 1),
                     "temp_min": round(float(temp_min), 1),
                     "source": "Open-Meteo Free API (Live: Prayagraj, UP)",
-                    "updated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S IST")
+                    "updated_at": f"{get_ist_date_str()} {get_ist_time_str()} IST"
                 }
                 _weather_cache = {"data": result, "timestamp": now_ts}
                 return result

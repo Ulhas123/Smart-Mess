@@ -22,40 +22,43 @@ FASTFOOD_KEYWORDS = {
 }
 NONVEG_KEYWORDS = {"chicken", "egg"}
 SPECIAL_KEYWORDS = {
-    "biryani", "kaju katli", "ice-cream", "gulab jamun",
+    "biryani", "biriyani", "kaju katli", "ice-cream", "gulab jamun",
     "custard", "milk cake", "sewai", "jalebi", "litti chokha",
     "pav bhaji", "chole bhature",
 }
 
 # (weekday, slot) → items string
+# Incorporating official KMK Global IIIT Prayagraj BH-2 & BH-3 Mess Menu:
+# Breakfast daily: Bread, butter, jam, egg/banana, tea, coffee and milk.
+# Lunch/Dinner daily: Salad (carrot/beetroot, tomato/cucumber, onion), mix achaar.
 MENU = {
     ("Monday",    "breakfast"): "Chola samosa, meethi chutney, hari chutney, dalia; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Monday",    "lunch"):     "Punjabi kadhi-pakode, aloo-shimlamirch, pineapple raita, jeera rice, roti; salad, mix achaar",
-    ("Monday",    "dinner"):    "Egg curry / Kadhai paneer, moong daal, rice, roti, gulab jamun; salad, mix achaar",
+    ("Monday",    "lunch"):     "Punjabi kadhi-pakode, aloo-shimlamirch, pineapple raita, jeera rice, roti; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Monday",    "dinner"):    "Egg curry / Kadhai paneer, moong daal, rice, roti, gulab jamun; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 
     ("Tuesday",   "breakfast"): "Uttapam, sambhar, coconut chutney, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Tuesday",   "lunch"):     "Litti chokha, arhar daal, rice, lassi, sambhar; salad, mix achaar",
-    ("Tuesday",   "dinner"):    "Veg kofta curry, arhar daal tadka, rice, roti, fruit custard; salad, mix achaar",
+    ("Tuesday",   "lunch"):     "Litti chokha, arhar daal, rice, lassi, sambhar; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Tuesday",   "dinner"):    "Veg kofta curry, arhar daal tadka, rice, roti, fruit custard; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 
     ("Wednesday", "breakfast"): "Pav bhaji, dalia, sprouts; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Wednesday", "lunch"):     "Kali masoor daal, kaddu sabzi, dahi, rice, puri, sambhar; salad, mix achaar",
-    ("Wednesday", "dinner"):    "Chana masala, roti, arhar daal, veg fried rice, sooji halwa; salad, mix achaar",
+    ("Wednesday", "lunch"):     "Kali masoor daal, kaddu sabzi, dahi, rice, puri, sambhar; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Wednesday", "dinner"):    "Chana masala, roti, arhar daal, veg fried rice, sooji halwa; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 
     ("Thursday",  "breakfast"): "Medu vada, sambhar, coconut chutney, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Thursday",  "lunch"):     "Safed matar masala, dal makhni, veg pulao, chaach, sambhar, roti; salad, mix achaar",
-    ("Thursday",  "dinner"):    "Aloo-pattagobhi, roti, rajma, rice, milk cake; salad, mix achaar",
+    ("Thursday",  "lunch"):     "Safed matar masala, dal makhni, veg pulao, chaach, sambhar, roti; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Thursday",  "dinner"):    "Aloo-pattagobhi, roti, rajma, rice, milk cake; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 
     ("Friday",    "breakfast"): "Poha + Haldiram bhujiya, jalebi, dalia; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Friday",    "lunch"):     "Aloo bhujiya, chana daal tadka, rice, roti, dahi; salad, mix achaar",
-    ("Friday",    "dinner"):    "Chicken curry/Paneer-pyaaz paratha, chutney, daal, rice, kaju katli; salad, mix achaar",
+    ("Friday",    "lunch"):     "Aloo bhujiya, chana daal tadka, rice, roti, dahi; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Friday",    "dinner"):    "(Chicken curry, roti) / (Paneer-pyaaz paratha, chutney, daal), rice, kaju katli; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 
     ("Saturday",  "breakfast"): "Masala dosa, coconut chutney, sambhar, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Saturday",  "lunch"):     "Chole bhature, rice, boondi raita, sambhar; salad, mix achaar",
-    ("Saturday",  "dinner"):    "Soyabean-aloo, arhar dal tadka, veg pulao, roti, ice-cream; salad, mix achaar",
+    ("Saturday",  "lunch"):     "Chole bhature, rice, boondi raita, sambhar; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Saturday",  "dinner"):    "Soyabean-aloo, arhar dal tadka, veg pulao, roti, ice-cream; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 
     ("Sunday",    "breakfast"): "Aloo-pyaaz paratha, dahi, chutney, cornflakes; bread, butter, jam, egg/banana, tea, coffee, milk",
-    ("Sunday",    "lunch"):     "Aloo jhol, arhar dal tadka, mix-veg raita, veg biryani, roti; salad, mix achaar",
-    ("Sunday",    "dinner"):    "Pasta / chowmein, veg manchurian, mix daal, rice, roti, sewai; salad, mix achaar",
+    ("Sunday",    "lunch"):     "Aloo jhol, arhar dal tadka, mix-veg raita, veg biryani, roti; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
+    ("Sunday",    "dinner"):    "Pasta / chowmein, veg manchurian, mix daal, rice, roti, sewai; salad (carrot/beetroot, tomato/cucumber, onion), mix achaar",
 }
 
 

@@ -37,3 +37,7 @@ Thumbs.db
 *.fdb_latexmk
 *.synctex.gz
 
+# Local oversized raw working files (use frontend/public/MinorProject_Presentation.pptx for web download)
+MinorProject_Final_Updated.pptx
+menu.png
+

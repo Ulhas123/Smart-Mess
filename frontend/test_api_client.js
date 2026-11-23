@@ -244,8 +244,8 @@ async function runTests() {
     assert.strictEqual(tog.status, "success");
     assert.strictEqual(tog.updated.is_allowed, true);
 
-    const pass = await api.generateMealPass("IEC2023999", "Snacks");
-    const scan = await api.scanMealPass(pass.qr_string, "Snacks");
+    const pass = await api.generateMealPass("IEC2023999", "Dinner");
+    const scan = await api.scanMealPass(pass.qr_string, "Dinner");
     assert.strictEqual(scan.status, "APPROVED");
     assert.strictEqual(scan.allowed, true);
   });

@@ -19,17 +19,14 @@ import {
 } from "lucide-react"
 import jsQR from "jsqr"
 import { scanMealPass, fetchTodayAttendance } from "../../services/api"
+import { getCurrentMealSlot } from "../../utils/time"
 import { Button, Eyebrow, Modal, StatusChip } from "../../components/UI"
 import type { AttendanceRecord, AttendanceScanResult, MealPeriod } from "../../types"
 
-const mealSlots: MealPeriod[] = ["Breakfast", "Lunch", "Snacks", "Dinner"]
+const mealSlots: MealPeriod[] = ["Breakfast", "Lunch", "Dinner"]
 
 function getCurrentSlot(): MealPeriod {
-  const h = new Date().getHours()
-  if (h >= 7 && h < 11) return "Breakfast"
-  if (h >= 11 && h < 16) return "Lunch"
-  if (h >= 16 && h < 18) return "Snacks"
-  return "Dinner"
+  return getCurrentMealSlot()
 }
 
 function playChime(type: "APPROVED" | "DENIED" | "DUPLICATE") {
@@ -235,7 +232,7 @@ export default function TurnstileScanner() {
         </div>
 
         {/* Meal Slot Selector */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.04)", padding: 4, borderRadius: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "#18181b", border: "1px solid rgba(255, 255, 255, 0.12)", padding: 4, borderRadius: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 700, padding: "0 8px", color: "var(--muted)" }}>MEAL:</span>
           {mealSlots.map((slot) => (
             <button
@@ -244,9 +241,9 @@ export default function TurnstileScanner() {
               style={{
                 padding: "6px 12px",
                 borderRadius: 7,
-                border: "none",
-                background: selectedSlot === slot ? "#0f172a" : "transparent",
-                color: selectedSlot === slot ? "#ffffff" : "var(--ink)",
+                border: selectedSlot === slot ? "1px solid #ffffff" : "1px solid transparent",
+                background: selectedSlot === slot ? "#ffffff" : "transparent",
+                color: selectedSlot === slot ? "#09090b" : "#a1a1aa",
                 fontWeight: 600,
                 fontSize: 12,
                 cursor: "pointer"
@@ -287,9 +284,9 @@ export default function TurnstileScanner() {
                     gap: 6,
                     padding: "6px 12px",
                     borderRadius: 8,
-                    background: "#fee2e2",
-                    color: "#991b1b",
-                    border: "none",
+                    background: "rgba(244, 63, 94, 0.15)",
+                    color: "#fb7185",
+                    border: "1px solid rgba(244, 63, 94, 0.3)",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -307,9 +304,9 @@ export default function TurnstileScanner() {
                     gap: 6,
                     padding: "6px 12px",
                     borderRadius: 8,
-                    background: "#0f172a",
-                    color: "#ffffff",
-                    border: "none",
+                    background: "#ffffff",
+                    color: "#09090b",
+                    border: "1px solid #ffffff",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -406,7 +403,9 @@ export default function TurnstileScanner() {
                   flex: 1,
                   padding: "10px 14px",
                   borderRadius: 8,
-                  border: "1px solid var(--line)",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  background: "#18181b",
+                  color: "#f4f4f5",
                   fontSize: 13,
                   outline: "none"
                 }}
@@ -426,8 +425,9 @@ export default function TurnstileScanner() {
                   gap: 6,
                   padding: "10px 14px",
                   borderRadius: 8,
-                  border: "1px solid var(--line)",
-                  background: "rgba(0,0,0,0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.15)",
+                  background: "rgba(255, 255, 255, 0.06)",
+                  color: "#f4f4f5",
                   cursor: "pointer",
                   fontSize: 12,
                   fontWeight: 600
@@ -441,7 +441,7 @@ export default function TurnstileScanner() {
             </div>
 
             {/* Quick-Scan Simulation Buttons (Test Suite) */}
-            <div style={{ background: "rgba(0,0,0,0.02)", border: "1px solid var(--line)", padding: 12, borderRadius: 10 }}>
+            <div style={{ background: "rgba(255, 255, 255, 0.03)", border: "1px solid rgba(255, 255, 255, 0.08)", padding: 12, borderRadius: 10 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", marginBottom: 8, textTransform: "uppercase" }}>
                 Quick Test Scenarios (1-Click Verification):
               </div>
@@ -450,11 +450,11 @@ export default function TurnstileScanner() {
                   type="button"
                   onClick={() => processScan("IEC2023059")}
                   style={{
-                    padding: "5px 10px",
+                    padding: "6px 12px",
                     borderRadius: 6,
-                    border: "1px solid #bbf7d0",
-                    background: "#f0fdf4",
-                    color: "#166534",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    color: "#34d399",
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -467,11 +467,11 @@ export default function TurnstileScanner() {
                   type="button"
                   onClick={() => processScan("IEC2023059")}
                   style={{
-                    padding: "5px 10px",
+                    padding: "6px 12px",
                     borderRadius: 6,
-                    border: "1px solid #fed7aa",
-                    background: "#fffbeb",
-                    color: "#b45309",
+                    border: "1px solid rgba(245, 158, 11, 0.3)",
+                    background: "rgba(245, 158, 11, 0.12)",
+                    color: "#fbbf24",
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -485,11 +485,11 @@ export default function TurnstileScanner() {
                   type="button"
                   onClick={() => processScan("IEC2023037")}
                   style={{
-                    padding: "5px 10px",
+                    padding: "6px 12px",
                     borderRadius: 6,
-                    border: "1px solid #bbf7d0",
-                    background: "#f0fdf4",
-                    color: "#166534",
+                    border: "1px solid rgba(16, 185, 129, 0.3)",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    color: "#34d399",
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -502,11 +502,11 @@ export default function TurnstileScanner() {
                   type="button"
                   onClick={() => processScan("IEC2023999")}
                   style={{
-                    padding: "5px 10px",
+                    padding: "6px 12px",
                     borderRadius: 6,
-                    border: "1px solid #fecaca",
-                    background: "#fef2f2",
-                    color: "#991b1b",
+                    border: "1px solid rgba(244, 63, 94, 0.3)",
+                    background: "rgba(244, 63, 94, 0.12)",
+                    color: "#fb7185",
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -520,11 +520,11 @@ export default function TurnstileScanner() {
                   type="button"
                   onClick={() => processScan("IEC9999999")}
                   style={{
-                    padding: "5px 10px",
+                    padding: "6px 12px",
                     borderRadius: 6,
-                    border: "1px solid #e2e8f0",
-                    background: "#f8fafc",
-                    color: "#475569",
+                    border: "1px solid rgba(255, 255, 255, 0.15)",
+                    background: "rgba(255, 255, 255, 0.06)",
+                    color: "#e4e4e7",
                     fontSize: 11,
                     fontWeight: 600,
                     cursor: "pointer"
@@ -563,7 +563,7 @@ export default function TurnstileScanner() {
               {!scanResult ? (
                 <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
                   <ShieldCheck size={48} style={{ margin: "0 auto 12px", opacity: 0.3 }} />
-                  <strong style={{ fontSize: 16, display: "block", color: "var(--ink)" }}>Waiting for Student QR Code</strong>
+                  <strong style={{ fontSize: 16, display: "block", color: "#ffffff" }}>Waiting for Student QR Code</strong>
                   <p style={{ fontSize: 12, marginTop: 4 }}>
                     When a student presents their digital meal pass, turnstile authorization will show here immediately.
                   </p>
@@ -574,25 +574,25 @@ export default function TurnstileScanner() {
                   {scanResult.status === "APPROVED" && (
                     <div 
                       style={{
-                        background: "#f0fdf4",
-                        border: "2px solid #22c55e",
+                        background: "rgba(16, 185, 129, 0.12)",
+                        border: "1px solid rgba(16, 185, 129, 0.4)",
                         borderRadius: 14,
                         padding: 18,
                         marginBottom: 16,
-                        color: "#166534"
+                        color: "#34d399"
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <CheckCircle2 size={36} style={{ color: "#16a34a", flexShrink: 0 }} />
+                        <CheckCircle2 size={36} style={{ color: "#34d399", flexShrink: 0 }} />
                         <div>
-                          <div style={{ fontSize: 12, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase" }}>
+                          <div style={{ fontSize: 12, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase", color: "#6ee7b7" }}>
                             Turnstile Decision:
                           </div>
-                          <h2 style={{ fontSize: 24, margin: "2px 0 0", color: "#15803d", fontWeight: 700 }}>
+                          <h2 style={{ fontSize: 24, margin: "2px 0 0", color: "#ffffff", fontWeight: 700 }}>
                             ENTRY AUTHORIZED
                           </h2>
-                          <div style={{ fontSize: 12, marginTop: 4 }}>
-                            Meal pass verified for <strong>{scanResult.slot}</strong>. Attendance recorded.
+                          <div style={{ fontSize: 12, marginTop: 4, color: "#a7f3d0" }}>
+                            Meal pass verified for <strong style={{ color: "#ffffff" }}>{scanResult.slot}</strong>. Attendance recorded.
                           </div>
                         </div>
                       </div>
@@ -602,24 +602,24 @@ export default function TurnstileScanner() {
                   {scanResult.status === "DENIED" && (
                     <div 
                       style={{
-                        background: "#fef2f2",
-                        border: "2px solid #ef4444",
+                        background: "rgba(244, 63, 94, 0.12)",
+                        border: "1px solid rgba(244, 63, 94, 0.4)",
                         borderRadius: 14,
                         padding: 18,
                         marginBottom: 16,
-                        color: "#991b1b"
+                        color: "#fb7185"
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <XCircle size={36} style={{ color: "#dc2626", flexShrink: 0 }} />
+                        <XCircle size={36} style={{ color: "#fb7185", flexShrink: 0 }} />
                         <div>
-                          <div style={{ fontSize: 12, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase" }}>
+                          <div style={{ fontSize: 12, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase", color: "#fda4af" }}>
                             Turnstile Decision:
                           </div>
-                          <h2 style={{ fontSize: 24, margin: "2px 0 0", color: "#b91c1c", fontWeight: 700 }}>
+                          <h2 style={{ fontSize: 24, margin: "2px 0 0", color: "#ffffff", fontWeight: 700 }}>
                             ENTRY DENIED
                           </h2>
-                          <div style={{ fontSize: 12, marginTop: 4, fontWeight: 500 }}>
+                          <div style={{ fontSize: 12, marginTop: 4, fontWeight: 500, color: "#fecdd3" }}>
                             {scanResult.reason}
                           </div>
                         </div>
@@ -630,24 +630,24 @@ export default function TurnstileScanner() {
                   {scanResult.status === "DUPLICATE" && (
                     <div 
                       style={{
-                        background: "#fffbeb",
-                        border: "2px solid #f59e0b",
+                        background: "rgba(245, 158, 11, 0.12)",
+                        border: "1px solid rgba(245, 158, 11, 0.4)",
                         borderRadius: 14,
                         padding: 18,
                         marginBottom: 16,
-                        color: "#92400e"
+                        color: "#fbbf24"
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <AlertTriangle size={36} style={{ color: "#d97706", flexShrink: 0 }} />
+                        <AlertTriangle size={36} style={{ color: "#fbbf24", flexShrink: 0 }} />
                         <div>
-                          <div style={{ fontSize: 12, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase" }}>
+                          <div style={{ fontSize: 12, letterSpacing: "0.08em", fontWeight: 700, textTransform: "uppercase", color: "#fcd34d" }}>
                             Turnstile Decision:
                           </div>
-                          <h2 style={{ fontSize: 22, margin: "2px 0 0", color: "#b45309", fontWeight: 700 }}>
+                          <h2 style={{ fontSize: 22, margin: "2px 0 0", color: "#ffffff", fontWeight: 700 }}>
                             DUPLICATE ENTRY
                           </h2>
-                          <div style={{ fontSize: 12, marginTop: 4 }}>
+                          <div style={{ fontSize: 12, marginTop: 4, color: "#fde68a" }}>
                             {scanResult.reason}
                           </div>
                         </div>
@@ -658,21 +658,21 @@ export default function TurnstileScanner() {
                   {/* Student Details Card */}
                   <div 
                     style={{
-                      background: "rgba(0,0,0,0.02)",
-                      border: "1px solid var(--line)",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
                       borderRadius: 12,
                       padding: 16
                     }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                      <strong style={{ fontSize: 14 }}>Student Identity Verification</strong>
+                      <strong style={{ fontSize: 14, color: "#ffffff" }}>Student Identity Verification</strong>
                       {scanResult.id_card_data && (
                         <button
                           onClick={() => setSelectedStudentIdCard(scanResult.id_card_data || null)}
                           style={{
                             fontSize: 11,
-                            color: "#0284c7",
-                            background: "rgba(56, 189, 248, 0.1)",
+                            color: "#38bdf8",
+                            background: "rgba(56, 189, 248, 0.12)",
                             border: "1px solid rgba(56, 189, 248, 0.3)",
                             borderRadius: 6,
                             padding: "3px 8px",
@@ -691,22 +691,22 @@ export default function TurnstileScanner() {
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12 }}>
                       <div>
                         <span style={{ color: "var(--muted)", display: "block" }}>Student Roll Number</span>
-                        <strong style={{ fontSize: 15, fontFamily: "monospace" }}>{scanResult.roll}</strong>
+                        <strong style={{ fontSize: 15, fontFamily: "monospace", color: "#ffffff" }}>{scanResult.roll}</strong>
                       </div>
 
                       <div>
                         <span style={{ color: "var(--muted)", display: "block" }}>Student Full Name</span>
-                        <strong style={{ fontSize: 14 }}>{scanResult.name}</strong>
+                        <strong style={{ fontSize: 14, color: "#ffffff" }}>{scanResult.name}</strong>
                       </div>
 
                       <div>
                         <span style={{ color: "var(--muted)", display: "block" }}>Dining Hostel</span>
-                        <span>{scanResult.hostel}</span>
+                        <span style={{ color: "#e4e4e7" }}>{scanResult.hostel}</span>
                       </div>
 
                       <div>
                         <span style={{ color: "var(--muted)", display: "block" }}>Meal Service Slot</span>
-                        <span>{scanResult.slot}</span>
+                        <span style={{ color: "#e4e4e7" }}>{scanResult.slot}</span>
                       </div>
                     </div>
                   </div>
@@ -721,7 +721,8 @@ export default function TurnstileScanner() {
                 display: "grid",
                 gridTemplateColumns: "repeat(3, 1fr)",
                 gap: 10,
-                background: "rgba(0,0,0,0.02)",
+                background: "rgba(255, 255, 255, 0.03)",
+                border: "1px solid rgba(255, 255, 255, 0.08)",
                 padding: 12,
                 borderRadius: 10,
                 textAlign: "center"
@@ -729,15 +730,15 @@ export default function TurnstileScanner() {
             >
               <div>
                 <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase" }}>Total Today</div>
-                <strong style={{ fontSize: 18 }}>{totalScans}</strong>
+                <strong style={{ fontSize: 18, color: "#ffffff" }}>{totalScans}</strong>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "#16a34a", textTransform: "uppercase" }}>Approved</div>
-                <strong style={{ fontSize: 18, color: "#16a34a" }}>{totalApproved}</strong>
+                <div style={{ fontSize: 10, color: "#34d399", textTransform: "uppercase" }}>Approved</div>
+                <strong style={{ fontSize: 18, color: "#34d399" }}>{totalApproved}</strong>
               </div>
               <div>
-                <div style={{ fontSize: 10, color: "#dc2626", textTransform: "uppercase" }}>Blocked / Denied</div>
-                <strong style={{ fontSize: 18, color: "#dc2626" }}>{totalDenied}</strong>
+                <div style={{ fontSize: 10, color: "#fb7185", textTransform: "uppercase" }}>Blocked / Denied</div>
+                <strong style={{ fontSize: 18, color: "#fb7185" }}>{totalDenied}</strong>
               </div>
             </div>
           </div>
@@ -762,14 +763,14 @@ export default function TurnstileScanner() {
 
           <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
             {/* Search Input */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.12)", padding: "6px 12px", borderRadius: 8 }}>
               <Search size={14} style={{ color: "var(--muted)" }} />
               <input
                 type="text"
                 placeholder="Search roll, name, hostel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ background: "none", border: "none", outline: "none", fontSize: 12, width: 160 }}
+                style={{ background: "none", border: "none", outline: "none", fontSize: 12, width: 160, color: "#ffffff" }}
               />
             </div>
 
@@ -780,15 +781,15 @@ export default function TurnstileScanner() {
               style={{
                 padding: "6px 10px",
                 borderRadius: 8,
-                border: "1px solid var(--line)",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
                 fontSize: 12,
-                background: "var(--paper)"
+                background: "#18181b",
+                color: "#f4f4f5"
               }}
             >
               <option value="all">All Slots</option>
               <option value="breakfast">Breakfast</option>
               <option value="lunch">Lunch</option>
-              <option value="snacks">Snacks</option>
               <option value="dinner">Dinner</option>
             </select>
 
@@ -800,9 +801,10 @@ export default function TurnstileScanner() {
                 gap: 4,
                 padding: "6px 10px",
                 borderRadius: 8,
-                border: "1px solid var(--line)",
-                background: "none",
+                border: "1px solid rgba(255, 255, 255, 0.15)",
+                background: "rgba(255, 255, 255, 0.06)",
                 fontSize: 12,
+                color: "#f4f4f5",
                 cursor: "pointer"
               }}
             >
@@ -821,7 +823,7 @@ export default function TurnstileScanner() {
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
               <thead>
-                <tr style={{ borderBottom: "1px solid var(--line)", color: "var(--muted)", fontSize: 11, textTransform: "uppercase" }}>
+                <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)", color: "var(--muted)", fontSize: 11, textTransform: "uppercase" }}>
                   <th style={{ padding: "10px 12px" }}>Time</th>
                   <th style={{ padding: "10px 12px" }}>Student Roll</th>
                   <th style={{ padding: "10px 12px" }}>Name</th>
@@ -833,21 +835,22 @@ export default function TurnstileScanner() {
               </thead>
               <tbody>
                 {filteredLogs.map((item) => (
-                  <tr key={item.id} style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-                    <td style={{ padding: "12px", fontFamily: "monospace", fontSize: 12 }}>{item.timestamp}</td>
-                    <td style={{ padding: "12px", fontWeight: 700, fontFamily: "monospace" }}>{item.roll}</td>
-                    <td style={{ padding: "12px" }}>{item.name}</td>
-                    <td style={{ padding: "12px" }}>{item.hostel}</td>
+                  <tr key={item.id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                    <td style={{ padding: "12px", fontFamily: "monospace", fontSize: 12, color: "#a1a1aa" }}>{item.timestamp}</td>
+                    <td style={{ padding: "12px", fontWeight: 700, fontFamily: "monospace", color: "#ffffff" }}>{item.roll}</td>
+                    <td style={{ padding: "12px", color: "#ffffff" }}>{item.name}</td>
+                    <td style={{ padding: "12px", color: "#d4d4d8" }}>{item.hostel}</td>
                     <td style={{ padding: "12px" }}>
-                      <span style={{ background: "rgba(0,0,0,0.05)", padding: "3px 8px", borderRadius: 4, fontSize: 11 }}>
+                      <span style={{ background: "rgba(255, 255, 255, 0.08)", color: "#e4e4e7", border: "1px solid rgba(255, 255, 255, 0.12)", padding: "3px 8px", borderRadius: 4, fontSize: 11 }}>
                         {item.slot}
                       </span>
                     </td>
                     <td style={{ padding: "12px" }}>
                       <span 
                         style={{
-                          background: item.status === "APPROVED" ? "#dcfce7" : item.status === "DUPLICATE" ? "#fffbeb" : "#fee2e2",
-                          color: item.status === "APPROVED" ? "#166534" : item.status === "DUPLICATE" ? "#b45309" : "#991b1b",
+                          background: item.status === "APPROVED" ? "rgba(16, 185, 129, 0.15)" : item.status === "DUPLICATE" ? "rgba(245, 158, 11, 0.15)" : "rgba(244, 63, 94, 0.15)",
+                          color: item.status === "APPROVED" ? "#34d399" : item.status === "DUPLICATE" ? "#fbbf24" : "#fb7185",
+                          border: item.status === "APPROVED" ? "1px solid rgba(16, 185, 129, 0.3)" : item.status === "DUPLICATE" ? "1px solid rgba(245, 158, 11, 0.3)" : "1px solid rgba(244, 63, 94, 0.3)",
                           padding: "4px 8px",
                           borderRadius: 6,
                           fontSize: 11,
@@ -857,7 +860,7 @@ export default function TurnstileScanner() {
                         {item.status === "APPROVED" ? "Entry Approved" : item.status === "DUPLICATE" ? "Duplicate Blocked" : "Entry Denied"}
                       </span>
                     </td>
-                    <td style={{ padding: "12px", color: "var(--muted)", fontSize: 12 }}>
+                    <td style={{ padding: "12px", color: "#a1a1aa", fontSize: 12 }}>
                       {item.reason || "Verified"}
                     </td>
                   </tr>

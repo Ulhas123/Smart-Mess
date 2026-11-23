@@ -74,14 +74,14 @@ export default function AllowedStudents() {
         </div>
 
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(0,0,0,0.04)", padding: "6px 12px", borderRadius: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255, 255, 255, 0.06)", border: "1px solid rgba(255, 255, 255, 0.12)", padding: "6px 12px", borderRadius: 8 }}>
             <Search size={14} style={{ color: "var(--muted)" }} />
             <input
               type="text"
               placeholder="Search roll, name, hostel..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{ background: "none", border: "none", outline: "none", fontSize: 12, width: 170 }}
+              style={{ background: "none", border: "none", outline: "none", fontSize: 12, width: 170, color: "#ffffff" }}
             />
           </div>
 
@@ -93,8 +93,9 @@ export default function AllowedStudents() {
               gap: 4,
               padding: "6px 12px",
               borderRadius: 8,
-              border: "1px solid var(--line)",
-              background: "none",
+              border: "1px solid rgba(255, 255, 255, 0.15)",
+              background: "rgba(255, 255, 255, 0.06)",
+              color: "#f4f4f5",
               fontSize: 12,
               cursor: "pointer"
             }}
@@ -134,7 +135,7 @@ export default function AllowedStudents() {
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
             <thead>
-              <tr style={{ borderBottom: "1px solid var(--line)", color: "var(--muted)", fontSize: 11, textTransform: "uppercase" }}>
+              <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)", color: "var(--muted)", fontSize: 11, textTransform: "uppercase" }}>
                 <th style={{ padding: "10px 12px" }}>Roll Number</th>
                 <th style={{ padding: "10px 12px" }}>Full Name</th>
                 <th style={{ padding: "10px 12px" }}>Hostel</th>
@@ -145,13 +146,13 @@ export default function AllowedStudents() {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.roll} style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-                  <td style={{ padding: 12, fontWeight: 700, fontFamily: "monospace" }}>{s.roll}</td>
+                <tr key={s.roll} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.06)" }}>
+                  <td style={{ padding: 12, fontWeight: 700, fontFamily: "monospace", color: "#ffffff" }}>{s.roll}</td>
                   <td style={{ padding: 12 }}>
-                    <strong>{s.name}</strong>
+                    <strong style={{ color: "#ffffff" }}>{s.name}</strong>
                     {s.email && <div style={{ fontSize: 11, color: "var(--muted)" }}>{s.email}</div>}
                   </td>
-                  <td style={{ padding: 12 }}>{s.hostel}</td>
+                  <td style={{ padding: 12, color: "#d4d4d8" }}>{s.hostel}</td>
                   <td style={{ padding: 12 }}>
                     <button
                       onClick={() => {
@@ -162,13 +163,13 @@ export default function AllowedStudents() {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 6,
-                        padding: "4px 8px",
+                        padding: "5px 10px",
                         borderRadius: 6,
-                        border: "1px solid var(--line)",
-                        background: "rgba(0,0,0,0.03)",
+                        border: "1px solid rgba(56, 189, 248, 0.3)",
+                        background: "rgba(56, 189, 248, 0.1)",
                         fontSize: 11,
                         cursor: "pointer",
-                        color: "#0284c7"
+                        color: "#38bdf8"
                       }}
                     >
                       <IdCard size={13} />
@@ -178,8 +179,9 @@ export default function AllowedStudents() {
                   <td style={{ padding: 12 }}>
                     <span 
                       style={{
-                        background: s.is_allowed ? "#dcfce7" : "#fee2e2",
-                        color: s.is_allowed ? "#166534" : "#991b1b",
+                        background: s.is_allowed ? "rgba(16, 185, 129, 0.15)" : "rgba(244, 63, 94, 0.15)",
+                        color: s.is_allowed ? "#34d399" : "#fb7185",
+                        border: s.is_allowed ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(244, 63, 94, 0.3)",
                         padding: "4px 8px",
                         borderRadius: 6,
                         fontSize: 11,
@@ -195,9 +197,9 @@ export default function AllowedStudents() {
                       style={{
                         padding: "5px 12px",
                         borderRadius: 6,
-                        border: "none",
-                        background: s.is_allowed ? "#fee2e2" : "#dcfce7",
-                        color: s.is_allowed ? "#991b1b" : "#166534",
+                        border: s.is_allowed ? "1px solid rgba(244, 63, 94, 0.3)" : "1px solid rgba(16, 185, 129, 0.3)",
+                        background: s.is_allowed ? "rgba(244, 63, 94, 0.15)" : "rgba(16, 185, 129, 0.15)",
+                        color: s.is_allowed ? "#fb7185" : "#34d399",
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: "pointer"
